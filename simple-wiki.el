@@ -853,7 +853,7 @@ Use the symbol 'none as the value if the wiki doesn't support the property."
      ;; FIXME: no character classes.  only ascii chars will work.
      (cons (concat "\\([^~]\\|^\\)"
                    "\\<\\([A-Z][a-z]+"
-                   "\\([A-Z][a-z]+\\)+\\)\\(\\>\\|'\\)"  2))
+                   "\\([A-Z][a-z]+\\)+\\)\\(\\>\\|'\\)")  2)
    (cons (concat "\\([^~]\\|^\\)"
                  "\\<\\([[:upper:]][[:lower:]]+"
                  "\\([[:upper:]][[:lower:]]+\\)+\\)\\(\\>\\|'\\)")  2))
