@@ -6,7 +6,7 @@
 ;;         Pierre Gaston <pierre@gaston-karlaouzou.com>
 ;;         David Hansen <david.hansen@physik.fu-berlin.de>
 ;; Maintainer: David Hansen <david.hansen@physik.fu-berlin.de>
-;; Version: 1.0.14
+;; Version: 1.0.15
 ;; Keywords: hypermedia
 ;; URL: http://www.emacswiki.org/cgi-bin/wiki.pl?HttpGet
 
@@ -35,8 +35,8 @@
 ;;; Change log:
 
 ;; 1.0.15
-;;   - made parse headers RFC 2616 compatible (removing whitespaces, headers
-;;     may spawn several line)
+;;   - made `http-parse-headers' RFC 2616 compatible (removing whitespaces,
+;;     headers may spawn several line)
 ;; 1.0.14
 ;;   - Removed attempt to fix bug in 1.0.12, not needed anymore since 1.0.13.
 ;; 1.0.13
@@ -66,8 +66,9 @@
 ;;; Code:
 
 (require 'hexl)
+(require 'http-cookies)
 
-(defvar http-get-version "1.0.14")
+(defvar http-get-version "1.0.15")
 
 ;; Proxy
 (defvar http-proxy-host nil
@@ -137,7 +138,7 @@ This is set by the function `http-headers'.")
 The headers are stored as an alist.
 This is set by the function `http-headers'.")
 
-(defvar  http-parser-state 'status-line
+(defvar http-parser-state 'status-line
   "Parser status.")
 
 (defvar http-unchunk-chunk-size  0
@@ -146,6 +147,8 @@ This is set by the function `http-headers'.")
 (defvar http-not-yet-parsed  ""
   "Received bytes that have not yet been parsed.")
 
+(defvar http-host ""
+  "The host to which we have sent the request.")
 
 (defun http-parser ()
   "Simple parser for http message.
@@ -195,7 +198,10 @@ Parse the status line, headers and chunk."
 		     (string-match "charset=\\(.*\\)" content-type))
 		(set (make-local-variable 'http-coding)
 		     (intern-soft (downcase (match-string 1 content-type)))))
-	      (setq parsed-string (substring parsed-string end-headers)))
+	      (setq parsed-string (substring parsed-string end-headers))
+              ;; set cookies
+              (when http-emacs-use-cookies
+                  (http-cookies-set http-host http-headers)))
 	  ;; we don't have all the headers yet
 	  (setq http-not-yet-parsed parsed-string)
 	  (setq parsed-string "")))
@@ -245,14 +251,15 @@ Parse the status line, headers and chunk."
 Argument HEADER-STRING A string containing a header list."
   ;; headers may spawn several line if the nth, n>1, line starts with
   ;; at least one whitespace
-  (setq header-string (replace-regexp-in-string "\r\n[ \t]+" " " header-string))
+  (setq header-string (replace-regexp-in-string "\r\n[ \t]+" " "
+                                                header-string))
   (let ((lines-list (split-string header-string "\r\n")))
     (mapcar (lambda (line)
 	      (if (string-match ":[ \t]+\\(.*?\\)[ \t]*$" line)
-                  (cons (downcase (substring line 0 (match-beginning 0)))
-                        (match-string 1 line)))
-		line)
-	    lines-list)))
+                    (cons (downcase (substring line 0 (match-beginning 0)))
+                          (match-string 1 line))
+		line))
+            lines-list)))
 
 
 ;; URL encoding for parameters
@@ -362,6 +369,7 @@ use `decode-coding-region' and get the coding system to use from
                 (concat "HTTP GET " url) buf
                 (if http-proxy-host http-proxy-host host)
                 (if http-proxy-port http-proxy-port port) ))
+    (with-current-buffer buf (set (make-local-variable 'http-host) host))
     (if sentinel
 	(set-buffer buf)
       (switch-to-buffer buf))
