@@ -51,8 +51,9 @@
 ;; in pre emacs 21 or xemacs.
 ;; "\\<[A-Z\xc0-\xde]+[a-z\xdf-\xff]+\\([A-Z\xc0-\xde]+[a-z\xdf-\xff]*\\)+\\>"
 
+;; maybe still buggy, oddmuse syntax is weird
 (defconst simple-wiki-link-pattern
-  "\\<\\([A-Z][[:lower:][:upper:]]+?[A-Z][[:lower:]]+[[:lower:][:upper:]]*\\)"
+  "\\<\\([A-Z]+?[[:lower:][:nonascii:]]+?[A-Z][[:lower:][:upper:]]*\\)"
   "The pattern used for finding camel case links.")
 
 (defconst simple-wiki-free-link-pattern
@@ -130,7 +131,7 @@
 
 (defface simple-wiki-local-link-face
   '((((class color) (background dark))
-     (:foreground "light sky blue" :weight bold))
+     (:foreground "sky blue" :weight bold))
     (((class color) (background light))
      (:foreground "royal blue" :weigth bold)))
   "Face for links to pages on the same wiki."
@@ -228,7 +229,9 @@
 (defun simple-wiki-end-of-tag (tag)
   (save-excursion
     (if (search-forward (concat "</" tag ">") nil t)
-        (search-backward "<"))
+        (search-backward "<")
+      (when (not (= (point) (point-max)))
+        (forward-char 1)))
     (point)))
 
 (defun simple-wiki-match-tag (tag limit)
