@@ -7,9 +7,9 @@
 ;; Maintainer: Pierre Gaston <pierre@gaston-karlaouzou.com>
 
 ;; Keywords:
-;; Version: 1.0.5
+;; Version: 1.0.6
  
-;; This file is NOT (yet) part of GNU Emacs.
+;; This file is NOT part of GNU Emacs.
  
 ;; This is free software; you can redistribute it and/or modify
 ;; it under the terms of the GNU General Public License as published by
@@ -28,12 +28,19 @@
 
 ;;; ChangeLog:
 
+;;  1.0.6
+;;    - `simple-wiki-edit-mode' when saving a usemod wiki is now called
+;;      in a http-post process sentinel
+;;    - Added "Connection: close" header for HTTP/1.1 connections.
 ;;  1.0.5
 ;;    - Fixed infinite loop bug in swd-nick
 
+;;; Code:
+
+(require 'simple-wiki-edit)
 
 (defcustom swd-wiki-defs-list
-  '(("ew" 
+  '(("ew"
      "http://www.emacswiki.org/cgi-bin/wiki.pl"
      "?action=browse&raw=2&id="
      "?action=index&raw=1"
@@ -41,7 +48,7 @@
      1.1
      swd-usemod-wiki-save
      utf-8)
-    ("om" 
+    ("om"
      "http://www.emacswiki.org/cgi-bin/oddmuse.pl"
      "?action=browse&raw=2&id="
      "?action=index&raw=1"
@@ -49,7 +56,7 @@
      1.1
      swd-usemod-wiki-save
      utf-8)
-    ("octave" 
+    ("octave"
      "http://gnufans.net/octave.pl"
      "?action=browse&raw=2&id="
      "?action=index&raw=1"
@@ -57,7 +64,7 @@
      1.0
      swd-usemod-wiki-save
      iso-8859-1)
-    ("fsedu" 
+    ("fsedu"
      "http://gnufans.net/fsedu.pl"
      "?action=browse&raw=2&id="
      "?action=index&raw=1"
@@ -65,7 +72,7 @@
      1.0
      swd-usemod-wiki-save
      iso-8859-1)
-    ("pierre" 
+    ("pierre"
      "http://pierre.gaston-karlaouzou.com/cgi-bin/en-pierre.pl"
      "?action=browse&raw=2&id="
      "?action=index&raw=1"
@@ -88,33 +95,50 @@ the eighth the encoding")
   "Set this to override your system username")
 
 ;; save functions
+(defun swd-usemod-wiki-save-sentinel (proc message)
+  "Sentinel for the http-post-process."
+  (switch-to-buffer (process-buffer proc))
+  ;; local variables seems to get destroyed when running
+  ;; `simple-siki-edit-mode'.  Setting the globals works
+  ;; around this problem.
+  (setq-default simple-wiki-url simple-wiki-url)
+  (setq-default simple-wiki-time simple-wiki-time)
+  (setq-default simple-wiki-save-function simple-wiki-save-function)
+  (simple-wiki-edit-mode))
+
 (defun swd-usemod-wiki-save ()
   "Save the current page to a UseMod wiki."
   (let ((url simple-wiki-url)
-	(save-func simple-wiki-save-function))
-    (switch-to-buffer
-     (process-buffer
-      (http-post
-       (simple-wiki-save-link)
-       (list (cons "title" (simple-wiki-page))
-	     (cons "summary" 
-		   (setq swc-summary-default
-			 (read-from-minibuffer "Summary: " "*")))
-	     '("raw" . "2")
-             (cons "username" 
-		   (or swd-user-name
-		       (apply 'concat (split-string user-full-name))))
-	     (cons "text" (buffer-string))
-	     (cons "recent_edit" (simple-wiki-minor-value)))
-       (swd-http-coding (swd-nick simple-wiki-url))
-       (swd-http-version (swd-nick simple-wiki-url)))))
-    (simple-wiki-edit-mode)
-    (set (make-local-variable 'simple-wiki-url) url)
-    (set (make-local-variable 'simple-wiki-save-function) save-func)))
+        (save-func simple-wiki-save-function)
+        (link (simple-wiki-save-link))
+        (http-version (swd-http-version (swd-nick simple-wiki-url)))
+        (headers) (proc))
+    (when (and http-version (= http-version 1.1))
+      (setq headers '(("Connection" . "close"))))
+    (setq proc (http-post
+                link
+                (list (cons "title" (simple-wiki-page))
+                      (cons "summary" 
+                            (setq swc-summary-default
+                                  (read-from-minibuffer "Summary: " "*")))
+                      '("raw" . "2")
+                      (cons "username"
+                            (or swd-user-name
+                                (apply 'concat (split-string user-full-name))))
+                      (cons "text" (buffer-string))
+                      (cons "recent_edit" (simple-wiki-minor-value)))
+                (swd-http-coding (swd-nick url))
+                headers
+                'swd-usemod-wiki-save-sentinel
+                http-version))
+    (with-current-buffer (process-buffer proc)
+      (set (make-local-variable 'simple-wiki-url) url)
+      (set (make-local-variable 'simple-wiki-save-function) save-func)
+      (set (make-local-variable 'simple-wiki-time) nil))))
 
 
 ;; various utility function
-(defun swd-nick (url) 
+(defun swd-nick (url)
   (let ((url-base (if (string-match "\\([^?]+\\)" url) (match-string 1 url)))
         (wiki-defs-list swd-wiki-defs-list)
         (nick nil))

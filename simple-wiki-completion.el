@@ -35,7 +35,9 @@
 
 
 ;;; ChangeLog:
-;;
+
+;; 1.0.10
+;;   - Added "Connection: close" header to http-get call for HTTP/1.1.
 ;; 1.0.9
 ;;   - Fixed bugs and the look of http-get version of building completion.
 ;; 1.0.8
@@ -45,7 +47,7 @@
 ;;     (Todo completion on nickname).
 ;; 1.0.6
 ;;   - Added swc-nick-current.
-;;   - Redefine the open function binding to take advantage of completionsw.
+;;   - Redefine the open function binding to take advantage of completions.
 ;;   - Redefine the follow function binding to take advantage of completions.
 ;;   - Move buffer renaming in a hook to keep working with open and follow
 ;;     functions.
@@ -66,7 +68,7 @@
 ;; Code:
 ;;; Real Code:
 
-(defvar simple-wiki-completion-version "1.0.9")
+(defvar simple-wiki-completion-version "1.0.10")
 
 (defvar swc-completions nil)
 
@@ -86,15 +88,13 @@ Is a list of the form
 (add-hook 'simple-wiki-edit-mode-hook 'rename-hook)
               
 (defun rename-hook ()
-  (when url
-    (let* ((simple-wiki-url url)
-	   (bufname  (concat 
-		      (upcase (swd-nick simple-wiki-url))
-		      ":" 
-		      (simple-wiki-page))))
+  (when simple-wiki-url
+    (let ((bufname  (concat (upcase (swd-nick simple-wiki-url))
+                            ":" 
+                            (simple-wiki-page))))
       (if (get-buffer bufname)
 	  (kill-buffer bufname))
-         (rename-buffer bufname))))
+      (rename-buffer bufname))))
 
 (defun swc-completions-nullify ()
   (interactive)
@@ -125,14 +125,15 @@ Is a list of the form
   "try swc-pages-get-w3m if you prefer w3m.")
 
 (defun swc-pages-get-http-get (refpage &optional http-version)
-  (let (proc pages  (progress 60) (progress-bar "Building completions: "))
-    (setq proc 
-	  (http-get refpage nil  
-		    (lambda (proc message) nil) (swd-http-version nick)))
+  (let (proc pages headers (progress 60)
+             (progress-bar "Building completions: "))
+    (when (and http-version (= http-version 1.1))
+      (setq headers '(("Connection" . "close"))))
+    (setq proc (http-get refpage headers
+                         (lambda (proc message) nil) (swd-http-version nick)))
     ;; wait for the process to end
     ;; or wait  60 seconds
     (while (and (eq (process-status proc) 'open)  (> progress 0))
-      ;; yank from eldoc
       (setq progress-bar (concat progress-bar "."))
       (cond ((fboundp 'display-message)
            ;; XEmacs 19.13 way of preventing log messages.
@@ -143,11 +144,11 @@ Is a list of the form
 	     (message  progress-bar))))
        (sleep-for 1)
        (setq progress (1- progress) ))
-    ;;parse the entries
+    ;; parse the entries
     (setq pages 
 	  (split-string 
 	   (buffer-string)))
-       ;; get rid of thebuffer
+       ;; get rid of the buffer
     (kill-buffer (process-buffer proc))
     pages))
 
@@ -186,7 +187,9 @@ Not to be confused with `swc-pages'")
  	 (pages (ignore-errors (swc-completions-get nick)))
          (completion-ignore-case simple-wiki-completion-ignore-case)
          (page (completing-read "Page: " pages)))
-    (simple-wiki-edit (simple-wiki-link page) simple-wiki-save-function nil (swd-http-version nick) (swd-http-coding nick))))
+    (simple-wiki-edit
+     (simple-wiki-link page) simple-wiki-save-function nil
+     (swd-http-version nick) (swd-http-coding nick))))
 
 (defun swc-follow ()
   "Follow the WikiName at point."
@@ -198,7 +201,9 @@ Not to be confused with `swc-pages'")
 	     (string-match
 	      simple-wiki-link-pattern
 	      page))
-	(simple-wiki-edit (simple-wiki-link page) simple-wiki-save-function  nil (swd-http-version nick) (swd-http-coding nick))
+	(simple-wiki-edit
+         (simple-wiki-link page) simple-wiki-save-function
+         nil (swd-http-version nick) (swd-http-coding nick))
       (error "No WikiName at point"))))
 
 (defun swc-browse ( &optional nick page)
@@ -209,8 +214,7 @@ Not to be confused with `swc-pages'")
 
    (let* ((pages (swc-completions-get nick))
 	 (completion-ignore-case simple-wiki-completion-ignore-case)
-	 (swc-tmp-pages (mapcar 'car pages))
-	 )
+	 (swc-tmp-pages (mapcar 'car pages)))
      (if (not page)
 	 (setq page (completing-read "Page: " pages)))
      (simple-wiki-edit 
@@ -221,8 +225,7 @@ Not to be confused with `swc-pages'")
       (swd-save-func nick)
       nil
       (swd-http-version nick)
-      (swd-http-coding nick)
-      )
+      (swd-http-coding nick))
      (setq swc-pages-completion swc-tmp-pages)))
 
 ;;;###autoload

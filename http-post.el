@@ -29,11 +29,14 @@
 
 ;; Use `http-post' to post to a URL.
 
-;;History
+;;; ChangeLog:
+
+;; 1.0.4
+;;   - Fixed bug in `http-post' that ignored the headers argument.
 ;; 1.0.3
-;; --minor fix
-;; 1.0.1 
-;;  -- move http-url-encode to http-get
+;;   - Minor fix.
+;; 1.0.1
+;;   - Moved http-url-encode to http-get.
 
 ;;; Code:
 
@@ -103,14 +106,17 @@ use `decode-coding-region' and get the coding system to use from
     (unless bufname (setq bufname
 			  (format "*HTTP POST %s *" url)))
     (setq host (match-string 1 url)
-	  port (or (and (setq port (match-string 3 url)) (string-to-int port)) 80)
+	  port (or (and (setq port (match-string 3 url))
+                        (string-to-int port)) 80)
 	  dir  (or (match-string 4 url) "")
 	  file (or (match-string 5 url) "")
 	  buf (get-buffer-create bufname)
-	  proc (open-network-stream (concat "HTTP POST " url)
-				    buf (if http-proxy-host http-proxy-host host) (if http-proxy-port http-proxy-port port)))
+	  proc (open-network-stream
+                (concat "HTTP POST " url)
+                buf (if http-proxy-host http-proxy-host host)
+                (if http-proxy-port http-proxy-port port)))
     (set-process-sentinel proc (or sentinel 'ignore))
-    (set-process-coding-system proc 'binary 'binary); we need \r\n in the headers!
+    (set-process-coding-system proc 'binary 'binary) ; we need \r\n
     (set-process-filter proc 'http-filter)
     (set-marker (process-mark proc) (point-min) buf)
     (if sentinel
@@ -118,7 +124,7 @@ use `decode-coding-region' and get the coding system to use from
       (switch-to-buffer buf))
     (erase-buffer)
     (kill-all-local-variables)
-    
+
     (let (result)
       (dolist (param parameters)
 	(setq result (cons (concat (car param) "="
@@ -126,22 +132,30 @@ use `decode-coding-region' and get the coding system to use from
 						    content-type))
 			   result)))
       (setq body (mapconcat 'identity result "&")))
-   
+
     (setq header
-	  (concat (format "POST %s%s%s HTTP/%.1f\r\n" (if http-proxy-host
-						     (concat "http://" host "/")						   "/") dir file version)
+	  (concat (format "POST %s%s%s HTTP/%.1f\r\n"
+                          (if http-proxy-host
+                              (concat "http://" host "/")
+                            "/") dir file version)
 		  (format "Host: %s\r\n" host)
 		  "Content-Type: application/x-www-form-urlencoded"
 		  (format "; charset=%s\r\n"
 			  (upcase (symbol-name content-type)))
-		  (format "Content-Length: %d\r\n" (length body))
-		  "\r\n"))
+		  (format "Content-Length: %d\r\n" (length body))))
+    (if headers
+        (setq header (concat header
+                             (mapconcat (lambda (pair)
+                                          (concat (car pair) ": " (cdr pair)))
+                                        headers
+                                        "\r\n")
+                             "\r\n\r\n"))
+      (setq header (concat header "\r\n")))
     (when verbose
       (insert header body "\n\n"))
     (process-send-string proc (concat header body "\r\n"))
     proc))
 
-;; (http-post "http://www.emacswiki.org/cgi-bin/test4.pl" '(("text" . "foo bör") ("rest" . "nada\nund so")) 'iso-8859-1)
 
 (provide 'http-post)
 

@@ -34,25 +34,29 @@
 ;; If your auto-fill-mode is usually on, you might want to turn it off
 ;; Also consider using longlines.el
 ;; (add-hook 'simple-wiki-edit-mode-hook 'turn-off-auto-fill)
-;; (add-hook 'simple-wiki-edit-mode-hook
-;;    'simple-wiki-delayed-longlines-mode-on)
+;; (add-hook 'simple-wiki-edit-mode-hook 'longlines-mode-on)
 ;; (add-hook 'simple-wiki-save-before-hooks 'longlines-mode-off)
 ;; in which case, also customize simple-wiki-fill-column back to 70
 ;; using pcomplete within the page:
 ;;  (add-hook 'simple-wiki-edit-mode-hooks  'pcomplete-simple-wiki-setup)
 ;; and thereafter, use  C-/ to pcomplete pages at point and M-/ for
-;; dabbrev-compltion 
+;; dabbrev-completion
 ;; Consider also (setq pcomplete-ignore-case t)
 
 ;;; ChaneLog:
 
+;; 1.0.9
+;;   - Added "Connection: close" header to http-get call for HTTP/1.1.
+;;   - `simple-wiki-edit-mode' now is called when the http-get process
+;;     finished.  There is no need for `simple-wiki-delayed-longlines-mode-on'
+;;     anymore.  Call `longlines-mode-on' in `simple-wiki-edit-mode-hook'.
 ;; 1.0.8
-;;   - removed all referenced to simple-wiki-edit-mode-hooks and replaced
-;;     them with simple-wiki-edit-mode-hook
+;;   - Removed all referenced to simple-wiki-edit-mode-hooks and replaced
+;;     them with simple-wiki-edit-mode-hook.
 ;; 1.0.7
-;;   - added simple-wiki-content-type
+;;   - Added simple-wiki-content-type.
 ;; 1.0.6
-;;   - added simple-wiki-http-version 1.1
+;;   - Added simple-wiki-http-version 1.1.
  
 ;;; Code:
 
@@ -60,7 +64,7 @@
 (require 'http-get)
 (require 'simple-wiki)
 
-(defvar simple-wiki-edit-version "1.0.7")
+(defvar simple-wiki-edit-version "1.0.9")
 
 (defvar simple-wiki-url nil
   "The URL of the current buffer.")
@@ -70,7 +74,6 @@
 
 (defvar simple-wiki-save-function nil
   "The function to use to save the current buffer.")
-
 
 (defcustom simple-wiki-minor-p nil
   "Whether to label changes as minor.  This can be changed by
@@ -97,7 +100,10 @@ pressing C-c C-t during edits.")
 (define-derived-mode simple-wiki-edit-mode simple-wiki-mode "Wiki-Edit"
   "Edit URL using `simple-wiki-mode'.
 
-\\{simple-wiki-edit-mode-map}")
+\\{simple-wiki-edit-mode-map}"
+  (make-local-variable 'simple-wiki-url)
+  (make-local-variable 'simple-wiki-time)
+  (make-local-variable 'simple-wiki-save-function))
 
 
 (define-key simple-wiki-edit-mode-map (kbd "C-c C-c") 'simple-wiki-save)
@@ -113,8 +119,6 @@ pressing C-c C-t during edits.")
 (define-key simple-wiki-edit-mode-map (kbd "C-c TAB") 'pcomplete)
 
 
-
-
 (defun simple-wiki-minor-toggle (&optional arg)
   (interactive)
   (let ((num (prefix-numeric-value arg)))
@@ -125,8 +129,6 @@ pressing C-c C-t during edits.")
      ((< num 0) (set 'simple-wiki-minor-p nil)))
     (message "simple-wiki-minor-p set to %S" simple-wiki-minor-p)
     simple-wiki-minor-p))
-
-
 
 (defun simple-wiki-next ()
   "Goto the next WikiName."
@@ -144,18 +146,34 @@ pressing C-c C-t during edits.")
      simple-wiki-link-pattern
      nil t)))
 
+(defun simple-wiki-edit-sentinel (proc message)
+  "Sentinel for the http-get process."
+
+  (switch-to-buffer (process-buffer proc))
+  ;; local variables seems to get destroyed when running
+  ;; `simple-siki-edit-mode'.  Setting the globals works
+  ;; around this problem.
+  (setq-default simple-wiki-url simple-wiki-url)
+  (setq-default simple-wiki-time simple-wiki-time)
+  (setq-default simple-wiki-save-function simple-wiki-save-function)
+  (simple-wiki-edit-mode))
+
 ;;;###autoload
-(defun simple-wiki-edit (url &optional save-func bufname http-version content-type)
+(defun simple-wiki-edit (url &optional save-func bufname
+                             http-version content-type)
   "Edit URL using `simple-wiki-edit-mode'.
 Optional SAVE-FUNC is a function to use when saving."
-  (unless content-type 
-    (setq content-type 'iso-8859-1))
-  (http-get url nil nil http-version bufname content-type)
-  (simple-wiki-edit-mode)
-  (set-fill-column simple-wiki-fill-column)
-  (set (make-local-variable 'simple-wiki-url) url)
-  (set (make-local-variable 'simple-wiki-time) (current-time))
-  (set (make-local-variable 'simple-wiki-save-function) save-func))
+  (let ((headers) (proc))
+    (when (and http-version (= http-version 1.1))
+      (setq headers '(("Connection" . "close"))))
+    (unless content-type
+      (setq content-type 'iso-8859-1))
+    (setq proc (http-get url headers 'simple-wiki-edit-sentinel
+                         http-version bufname content-type))
+    (with-current-buffer (process-buffer proc)
+      (set (make-local-variable 'simple-wiki-url) url)
+      (set (make-local-variable 'simple-wiki-time) (current-time))
+      (set (make-local-variable 'simple-wiki-save-function) save-func))))
 
 (defun simple-wiki-follow ()
   "Follow the WikiName at point."
@@ -203,7 +221,6 @@ to the first \"?\"."
   (interactive "sPage: ")
   (simple-wiki-edit (simple-wiki-link page) simple-wiki-save-function))
 
-
 (defun simple-wiki-save ()
   "Save the current buffer to the wiki."
   (interactive)
@@ -213,9 +230,10 @@ to the first \"?\"."
   (save-excursion
     (funcall simple-wiki-save-function)))
 
-
-
+;; remove this
 (defun simple-wiki-delayed-longlines-mode-on ()
+  "Braindead and obsolete function.
+Use (add-hook 'simple-wiki-edit-mode-hook 'longlines-mode-on) instead."
   (require 'longlines)
   (let ((buf (current-buffer)))
     (run-with-idle-timer 1 nil
@@ -224,15 +242,11 @@ to the first \"?\"."
 			     (set-buffer buf)
 			     (longlines-mode-on))))))
 
-
-
 (defun pcomplete-simple-wiki-setup ()
   (set (make-local-variable 'pcomplete-parse-arguments-function)
    'pcomplete-parse-simple-wiki-arguments)
   (set (make-local-variable 'pcomplete-default-completion-function)
        'pcomplete-simple-wiki-default-completion))
-
-
 
 (defun pcomplete-parse-simple-wiki-arguments ()
   (save-excursion
@@ -240,10 +254,9 @@ to the first \"?\"."
 	   (pt (search-backward-regexp "[ \t\n]" nil t))
 	   (ptt (if pt (+ pt 1) thispt)))
 
-      (list 
+      (list
        (list "dummy" (buffer-substring-no-properties ptt thispt))
        (point-min) ptt))))
-
 
 (defun pcomplete-simple-wiki-default-completion ()
   (pcomplete-here swc-pages-completion))

@@ -54,8 +54,8 @@
      ("^\\([*#]\\)[^*#]" 1 font-lock-builtin-face)))
   (font-lock-add-keywords
    nil
-   (list (cons (symbol-value 'simple-wiki-link-pattern) 'font-lock-keyword-face))
-   )
+   (list (cons (symbol-value 'simple-wiki-link-pattern)
+               'font-lock-keyword-face)))
 
   (font-lock-mode 1)
   (goto-address)
