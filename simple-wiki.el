@@ -5,7 +5,7 @@
 ;; Author: Alex Schroeder <alex@gnu.org>
 ;;         David Hansen <david.hansen@physik.fu-berlin.de>
 ;; Maintainer: David Hansen <david.hansen@physik.fu-berlin.de>
-;; Version: 1.0.6
+;; Version: 1.0.7
 ;; Keywords: hypermedia
 ;; URL: http://www.emacswiki.org/cgi-bin/wiki.pl?SimpleWikiEditMode
 
@@ -36,9 +36,15 @@
 
 ;;; Change Log:
 
+;; 1.0.7
+;;   - moved `simple-wiki-next' and `simple-wiki-prev' here
+;;   - Renamed -regexps to -patterns.
+;;   - History and default value when inserting tags.
+;;   - Some more work on the interface.
+;;   - First try of a mediawiki mode.
 ;; 1.0.6
-;;   - interface to define different major modes for different wikis
-;;   - insert emphasized text and tags functions
+;;   - Interface to define different major modes for different wikis added.
+;;   - Insert emphasized text and tags functions added.
 ;; 1.0.5
 ;;   - Added some xemacs compatibility.
 ;; 1.0.4
@@ -55,19 +61,18 @@
 
 (require 'font-lock)
 
-(defvar simple-wiki-version "1.0.6")
+(defvar simple-wiki-version "1.0.7")
 
 
 
 ;; the default value are for the emacswiki
 
 (defvar simple-wiki-tag-list
+  ;; xemacs requires an alist for `completing-read'.  the cdr is not used.
   '(("u" . t) ("b" . t) ("i" . t) ("strong" . t) ("em" . t)
     ("nowiki" . t) ("code" . t) ("tt" . t) ("pre". t))
-  "List of supported tags.
-xemacs requires an alist for `compleiting-read'  the cdr is not used at the
-time.")
-(make-variable-buffer-local 'simple-wiki-tag-list)
+  "Alist of supported tags used for `completing-read'.
+The cdr of a pair has no meaning at the time.")
 
 (if (featurep 'xemacs) ;; xemacs doesn't know character classes
     (defvar simple-wiki-link-pattern
@@ -80,24 +85,21 @@ A Pair of the pattern and the matching subexpression.")
     '("\\<\\([A-Z]+?[[:lower:][:nonascii:]]+?[A-Z][[:lower:][:upper:]]*\\)" . 0)
     "The pattern matching camel case links.
 A Pair of the pattern and the matching subexpression."))
-(make-variable-buffer-local 'simple-wiki-link-pattern)
 
 (defvar simple-wiki-free-link-pattern
   '("\\[\\[\\([^\n]+?\\)\\]\\]" . 1)
   "The Pattern matching free links.
 A Pair of the pattern and the matching subexpression.")
-(make-variable-buffer-local 'simple-wiki-free-link-pattern)
 
-(defvar simple-wiki-em-regexps
+(defvar simple-wiki-em-patterns
   '(("\\(\\W\\|^\\)''\\([^']\\|[^']'\\)*''" . 0)        ; ''emph''
     ("\\(\\W\\|^\\)'''\\([^']\\|[^']'\\)*'''" . 0)      ; '''strong'''
     ("\\(\\W\\|^\\)'''''\\([^']\\|[^']'\\)*'''''" . 0)) ; '''''strong emph'''''
   "List of regexps to match emphasized, strong and strong emphasized text.
 Actually a list of pairs with the pattern and the number of the matching
 subexpression.")
-(make-variable-buffer-local 'simple-wiki-em-regexps)
 
-(defvar simple-wiki-headline-regexps
+(defvar simple-wiki-headline-patterns
   '(("^=\\([^\n=]+\\)=[^=]" . 1)
     ("^=\\{2\\}\\([^\n=]+\\)=\\{2\\}\\([^=]\\|$\\)" . 1)
     ("^=\\{3\\}\\([^\n=]+\\)=\\{3\\}\\([^=]\\|$\\)" . 1)
@@ -107,7 +109,6 @@ subexpression.")
   "List of regexps to match headlines.
 Actually a list of pairs with the pattern and the number of the matching
 subexpression.")
-(make-variable-buffer-local 'simple-wiki-headline-regexps)
 
 (defvar simple-wiki-smilies-pattern
   (cons (concat
@@ -116,22 +117,42 @@ subexpression.")
          ":-\\\\|\\|:-?[/\\\\]\\|:-?(\\|:-?{\\)"
          "\\W") 1)
   "Pair of the pattern used to match smilies an the matching subexpression.")
-(make-variable-buffer-local 'simple-wiki-smilies-pattern)
+
+(defvar simple-wiki-outline-patterns
+  '("=+" . "=+[ \t]*\n")
+  "Pair of patterns for `outline-regexp' and `outline-heading-end-regexp'.")
+
+(defvar simple-wiki-horiz-line-pattern
+  '("-----*" . 0)
+  "Pair of the pattern use to match a horizontal line and the subexpression.")
+
+(defvar simple-wiki-line-break-pattern
+  'none
+  "Pair of the pattern used to match a line break and matching subexpression.")
+
+(defvar simple-wiki-enum-pattern
+  '("^\\([*#]*#+\\)\\([^#*]\\|$\\)" . 1)
+  "Pair of the pattern to match an entry of a numbered list the subexpression.")
+
+(defvar simple-wiki-bullet-pattern
+  '("^\\([*#]*\\*+\\)\\([^*#]\\|$\\)" . 1)
+  "Pair of the pattern to match an entry of a bullet list the subexpression.")
+
+(defvar simple-wiki-indent-pattern
+  '("^:+" . 0)
+  "Pair of the pattern to match indented text and th matching subexpression.")
 
 (defvar simple-wiki-em-strings
   '("''" . "''")
   "Start and end string for emphasis text.")
-(make-variable-buffer-local 'simple-wiki-em-strings)
 
 (defvar simple-wiki-strong-strings
   '("'''" . "'''")
   "Start and end strings for strong text.")
-(make-variable-buffer-local 'simple-wiki-strong-strings)
 
 (defvar simple-wiki-strong-em-strings
   '("'''''" . "'''''")
   "Start and end string for strong text.")
-(make-variable-buffer-local 'simple-wiki-strong-em-strings)
 
 (defvar simple-wiki-additional-keywords
   (list
@@ -140,36 +161,40 @@ subexpression.")
      (1 font-lock-constant-face)
      (2 font-lock-warning-face))
 
-   '("<\\(/?[a-z]+\\)" (1 font-lock-function-name-face t)) ; tags
-   '("^[*#]\\([*#]+\\)" (0 font-lock-constant-face t))     ; enums
-   '("^\\([*#]\\)[^*#]" (1 font-lock-builtin-face t))      ; enums
-   '("^\\:\\(\\:+\\)" (0 font-lock-comment-face))          ; indent
-   '("^\\(\\:\\)[^\\:]" (1 font-lock-string-face))         ; indent
+   '(simple-wiki-match-tag-i . (0 'simple-wiki-italic-face append))
+   '(simple-wiki-match-tag-b . (0 'simple-wiki-bold-face append))
+   '(simple-wiki-match-tag-u . (0 'simple-wiki-underline-face append))
+   '(simple-wiki-match-tag-tt . (0 'simple-wiki-teletype-face append))
+   '(simple-wiki-match-tag-em . (0 'simple-wiki-emph-face append))
+   '(simple-wiki-match-tag-strong . (0 'simple-wiki-strong-face append))
 
-   '(simple-wiki-match-tag-i . (0 'simple-wiki-italic-face prepend))
-   '(simple-wiki-match-tag-b . (0 'simple-wiki-bold-face prepend))
-   '(simple-wiki-match-tag-u . (0 'simple-wiki-underline-face prepend))
-   '(simple-wiki-match-tag-tt . (0 'simple-wiki-teletype-face prepend))
-   '(simple-wiki-match-tag-em . (0 'simple-wiki-emph-face prepend))
-   '(simple-wiki-match-tag-strong . (0 'simple-wiki-strong-face prepend))
+   ;; tags
+   (list (concat "\\(</?\\)"
+                 "\\([A-Za-z]+\\)"
+                 "\\(\\([ \t]+[a-zA-Z]+\\)=\\(\".*\"\\)\\)*"
+                 "\\(/?>\\)?")
+         '(1 default t t)
+         '(2 font-lock-function-name-face t t)
+         '(4 font-lock-variable-name-face t t)
+         '(5 font-lock-string-face t t)
+         '(6 default t t))
+
+   '(simple-wiki-match-tag-nowiki . (0 'simple-wiki-nowiki-face t))
 
    ;; code blocks
    ;; highlight of <code> and <pre> needs some more sophisticated stuff :(
    '(simple-wiki-match-tag-code . (0 'simple-wiki-code-face t))
    '(simple-wiki-match-tag-pre . (0 'simple-wiki-code-face t))
 
-   '(simple-wiki-match-code-block . (0 'simple-wiki-code-face t))
-
-   ;; should be the last
-   '(simple-wiki-match-tag-nowiki . (0 'simple-wiki-nowiki-face t)))
+   '(simple-wiki-match-code-block . (0 'simple-wiki-code-face t)))
 
   "Additional keywords for font locking.")
-(make-variable-buffer-local 'simple-wiki-additional-keywords)
 
 (defvar simple-wiki-font-lock-keywords nil
   "Font lock keywords for simple wiki mode.")
-(make-variable-buffer-local 'simple-wiki-font-lock-keywords)
 
+(defvar simple-wiki-tag-history nil
+  "History for `completing-read' of tags.")
 
 
 ;; custom groups
@@ -303,6 +328,16 @@ subexpression.")
     "Face for <b>bold</b>."
     :group 'simple-wiki-faces))
 
+(if (featurep 'xemacs)
+    (defface simple-wiki-strike-face
+      '((t (:strikethru t)))
+      "Face for <strike>strike</strike>."
+      :group 'simple-wiki-faces)
+  (defface simple-wiki-strike-face
+    '((t (:strike-through t)))
+    "Face for <strike>strike</strike>."
+    :group 'simple-wiki-faces))
+
 (defface simple-wiki-underline-face
   '((t (:underline t)))
   "Face for <u>underline</u>."
@@ -410,6 +445,15 @@ subexpression.")
   "Font lock matcher for regions within <strong></strong>."
   (simple-wiki-match-tag "strong" limit))
 
+(defun simple-wiki-match-tag-math (limit)
+  "Font lock matcher for regions within <math></math>."
+  (simple-wiki-match-tag "math" limit))
+
+(defun simple-wiki-match-tag-strike (limit)
+  "Font lock matcher for regions within <strike></strike>."
+  (simple-wiki-match-tag "strike" limit))
+
+
 (defun simple-wiki-end-of-code-block ()
   "Return the end of a code block if the cursor is within a code block.
 Return nil otherwise."
@@ -453,7 +497,7 @@ Return nil otherwise."
   "Insert strong text."
   (interactive)
   (if (equal simple-wiki-strong-strings 'none)
-      (error "No string strings defined.")
+      (error "No strong strings defined.")
     (insert (car simple-wiki-strong-strings))
     (save-excursion (insert (cdr simple-wiki-strong-strings)))))
 
@@ -461,24 +505,78 @@ Return nil otherwise."
   "Insert strong emphasized text."
   (interactive)
   (if (equal simple-wiki-strong-em-strings 'none)
-      (error "No string strings defined.")
+      (error "No strong emphasis strings defined.")
     (insert (car simple-wiki-strong-em-strings))
     (save-excursion (insert (cdr simple-wiki-strong-em-strings)))))
 
 (defun simple-wiki-insert-tag-string (tag &optional closing)
   "Insert a the string \"<TAG>\" or \"</TAG>\" if CLOSING is non-nil."
-  (if closing (insert "</") (insert "<"))
-  (insert tag)
-  (insert ">"))
+  (when (and tag (not (string= tag "")))
+    (if closing (insert "</") (insert "<"))
+    (insert tag)
+    (insert ">")))
 
 (defun simple-wiki-insert-tag (&optional tag)
   (interactive)
   "Insert a tag and put the cursor between the opening and closing tag."
   (unless tag
-    (setq tag (completing-read "Tag: " simple-wiki-tag-list))
+    (let (prompt)
+      (if (and simple-wiki-tag-history (car simple-wiki-tag-history))
+          (setq prompt (concat "Tag (" (car simple-wiki-tag-history) "): "))
+        (setq prompt "Tag: "))
+      (setq tag (completing-read prompt simple-wiki-tag-list nil nil ""
+                                 'simple-wiki-tag-history
+                                 (car simple-wiki-tag-history))))
     (add-to-list 'simple-wiki-tag-list (cons tag t)))
   (simple-wiki-insert-tag-string tag)
   (save-excursion (simple-wiki-insert-tag-string tag t)))
+
+
+
+;; cursor movement
+
+(defun simple-wiki-next ()
+  "Move the cursor to the beginning of the next link."
+  (interactive)
+  (let (pos1 pos2 (case-fold-search nil))
+    (save-excursion
+      (unless (equal simple-wiki-link-pattern 'none)
+        (when (re-search-forward (car simple-wiki-link-pattern) nil t)
+          (setq pos1 (match-beginning (cdr simple-wiki-link-pattern))))))
+    (save-excursion
+      (unless (equal simple-wiki-free-link-pattern 'none)
+        (when (re-search-forward (car simple-wiki-free-link-pattern) nil t)
+          (setq pos2 (match-beginning (cdr simple-wiki-free-link-pattern))))))
+    (if (and pos1 pos2)
+        (if (equal (min pos1 pos2) (point))
+            (goto-char (max pos1 pos2))
+          (goto-char (min pos1 pos2)))
+      (if pos1
+          (goto-char pos1)
+        (if pos2
+            (goto-char pos2))))))
+
+(defun simple-wiki-prev ()
+  "Move the cursor to the beginning of the previous link"
+  (interactive)
+  (let (pos1 pos2 end-camelcase (case-fold-search nil))
+    (save-excursion
+      (unless (equal simple-wiki-link-pattern 'none)
+        (when (re-search-backward (car simple-wiki-link-pattern) nil t)
+          (setq pos1 (match-beginning (cdr simple-wiki-link-pattern)))
+          (setq end-camelcase (match-end (cdr simple-wiki-link-pattern))))))
+    (save-excursion
+      (unless (equal simple-wiki-free-link-pattern 'none)
+        (when (re-search-backward (car simple-wiki-free-link-pattern) nil t)
+          (setq pos2 (match-beginning (cdr simple-wiki-free-link-pattern))))))
+    (if (and pos1 pos2)
+        (if (and end-camelcase (equal (point) end-camelcase))
+            (goto-char (min pos1 pos2))
+          (goto-char (max pos1 pos2)))
+      (if pos1
+          (goto-char pos1)
+        (if pos2
+            (goto-char pos2))))))
 
 
 
@@ -496,10 +594,12 @@ face used for highlighting and overwrite may be 'prepend,
 
 (defun simple-wiki-add-font-lock-keywords ()
   "Add the default patterns to `simple-wiki-font-lock-keywords'."
+
   ;; additional keywords
   (if (equal simple-wiki-additional-keywords 'none)
       (setq simple-wiki-font-lock-keywords nil)
     (setq simple-wiki-font-lock-keywords simple-wiki-additional-keywords))
+
   ;; local links
   (unless (equal simple-wiki-link-pattern 'none)
     (simple-wiki-add-keyword simple-wiki-link-pattern
@@ -513,32 +613,59 @@ face used for highlighting and overwrite may be 'prepend,
   (unless (equal simple-wiki-smilies-pattern 'none)
     (simple-wiki-add-keyword simple-wiki-smilies-pattern
                              'simple-wiki-smiley-face
-                             'prepend))
+                             t))
+
+  ;; indent
+  (unless (equal simple-wiki-indent-pattern 'none)
+    (simple-wiki-add-keyword simple-wiki-indent-pattern
+                             'font-lock-comment-face
+                             t))
+  ;; enums
+  (unless (equal simple-wiki-enum-pattern 'none)
+    (simple-wiki-add-keyword simple-wiki-enum-pattern
+                             'font-lock-constant-face
+                             t))
+  ;; bullet
+  (unless (equal simple-wiki-bullet-pattern 'none)
+    (simple-wiki-add-keyword simple-wiki-bullet-pattern
+                             'font-lock-builtin-face
+                             t))
   ;; emphasis
   (let (em-re)
-    (unless (equal simple-wiki-em-regexps 'none)
-      (when (setq em-re (first simple-wiki-em-regexps))
+    (unless (equal simple-wiki-em-patterns 'none)
+      (when (setq em-re (first simple-wiki-em-patterns))
         (simple-wiki-add-keyword em-re 'simple-wiki-emph-face 'prepend))
-      (when (setq em-re (second simple-wiki-em-regexps))
+      (when (setq em-re (second simple-wiki-em-patterns))
         (simple-wiki-add-keyword em-re 'simple-wiki-strong-face 'prepend))
-      (when (setq em-re (third simple-wiki-em-regexps))
+      (when (setq em-re (third simple-wiki-em-patterns))
         (simple-wiki-add-keyword em-re
                                  'simple-wiki-strong-emph-face
                                  'prepend))))
+  ;; horizontal lines
+  (unless (equal simple-wiki-horiz-line-pattern 'none)
+    (simple-wiki-add-keyword simple-wiki-horiz-line-pattern
+                             'font-lock-comment-face
+                             'prepend))
+
+  ;; line breaks
+  (unless (equal simple-wiki-line-break-pattern 'none)
+    (simple-wiki-add-keyword simple-wiki-line-break-pattern
+                             'font-lock-warning-face
+                             t))
   ;; head lines
   (let (head-re)
-    (unless (equal simple-wiki-headline-regexps 'none)
-      (when (setq head-re (first simple-wiki-headline-regexps))
+    (unless (equal simple-wiki-headline-patterns 'none)
+      (when (setq head-re (first simple-wiki-headline-patterns))
         (simple-wiki-add-keyword head-re 'simple-wiki-heading-1-face t))
-      (when (setq head-re (second simple-wiki-headline-regexps))
+      (when (setq head-re (second simple-wiki-headline-patterns))
         (simple-wiki-add-keyword head-re 'simple-wiki-heading-2-face t))
-      (when (setq head-re (third simple-wiki-headline-regexps))
+      (when (setq head-re (third simple-wiki-headline-patterns))
         (simple-wiki-add-keyword head-re 'simple-wiki-heading-3-face t))
-      (when (setq head-re (fourth simple-wiki-headline-regexps))
+      (when (setq head-re (fourth simple-wiki-headline-patterns))
         (simple-wiki-add-keyword head-re 'simple-wiki-heading-4-face t))
-      (when (setq head-re (fifth simple-wiki-headline-regexps))
+      (when (setq head-re (fifth simple-wiki-headline-patterns))
         (simple-wiki-add-keyword head-re 'simple-wiki-heading-5-face t))
-      (when (setq head-re (sixth simple-wiki-headline-regexps))
+      (when (setq head-re (sixth simple-wiki-headline-patterns))
         (simple-wiki-add-keyword head-re 'simple-wiki-heading-6-face t)))))
 
 (defun simple-wiki-define-major-mode (mode name doc-string &rest properties)
@@ -560,9 +687,15 @@ as a list of keywords:
         :em-strings......... overwrite `simple-wiki-em-strings'
         :strong-strings..... overwrite `simple-wiki-strong-strings'
         :strong-em-strings.. overwrite `simple-wiki-strong-em-strings'
-        :em-regexps......... overwrite `simple-wiki-em-regexps'
-        :headlines.......... overwrite `simple-wiki-headline-regexps'
+        :em-patterns........ overwrite `simple-wiki-em-patterns'
+        :headlines.......... overwrite `simple-wiki-headline-patterns'
         :keywords........... overwrite `simple-wiki-additional-keywords'
+        :outline............ overwrite `simple-wiki-outline-patterns'
+        :linebreak.......... overwrite `simple-wiki-line-break-pattern'
+        :horiz.............. overwrite `simple-wiki-horiz-line-pattern'
+        :enum............... overwrite `simple-wiki-enum-pattern'
+        :bullet............. overwrite `simple-wiki-bullet-pattern'
+        :indent............. overwrite `simple-wiki-indent-pattern'
 
 Use the symbol 'none as the value if the wiki doesn't support the property."
   (eval
@@ -571,35 +704,74 @@ Use the symbol 'none as the value if the wiki doesn't support the property."
       text-mode ,name ,doc-string
 
       (when (quote ,(plist-get properties :tags))
-        (setq simple-wiki-tag-list
-              (quote ,(plist-get properties :tags))))
+        (set (make-local-variable 'simple-wiki-tag-list)
+             (quote ,(plist-get properties :tags))))
+
       (when (quote ,(plist-get properties :camelcase))
-        (setq simple-wiki-link-pattern
-              (quote ,(plist-get properties :camelcase))))
+        (set (make-local-variable 'simple-wiki-link-pattern)
+             (quote ,(plist-get properties :camelcase))))
+
       (when (quote ,(plist-get properties :free-link))
-        (setq simple-wiki-free-link-pattern
-              (quote ,(plist-get properties :free-link))))
+        (set (make-local-variable 'simple-wiki-free-link-pattern)
+             (quote ,(plist-get properties :free-link))))
+
       (when (quote ,(plist-get properties :smilies))
-        (setq simple-wiki-smilies-pattern
-              (quote ,(plist-get properties :smilies))))
+        (set (make-local-variable 'simple-wiki-smilies-pattern)
+             (quote ,(plist-get properties :smilies))))
+
       (when (quote ,(plist-get properties :em-strings))
-        (setq simple-wiki-em-strings
-              (quote ,(plist-get properties :em-strings))))
+        (set (make-local-variable 'simple-wiki-em-strings)
+             (quote ,(plist-get properties :em-strings))))
+
       (when (quote ,(plist-get properties :strong-strings))
-        (setq simple-wiki-strong-strings
-              (quote ,(plist-get properties :strong-strings))))
+        (set (make-local-variable 'simple-wiki-strong-strings)
+             (quote ,(plist-get properties :strong-strings))))
+
       (when (quote ,(plist-get properties :strong-em-strings))
-        (setq simple-wiki-strong-em-strings
-              (quote ,(plist-get properties :strong-em-strings))))
-      (when (quote ,(plist-get properties :em-regexps))
-        (setq simple-wiki-em-regexps
-              (quote ,(plist-get properties :em-regexps))))
+        (set (make-local-variable 'simple-wiki-strong-em-strings)
+             (quote ,(plist-get properties :strong-em-strings))))
+
+      (when (quote ,(plist-get properties :em-patterns))
+        (set (make-local-variable 'simple-wiki-em-patterns)
+             (quote ,(plist-get properties :em-patterns))))
+
       (when (quote ,(plist-get properties :headlines))
-        (setq simple-wiki-headline-regexps
-              (quote ,(plist-get properties :headlines))))
+        (set (make-local-variable 'simple-wiki-headline-patterns)
+             (quote ,(plist-get properties :headlines))))
+
       (when (quote ,(plist-get properties :keywords))
-        (setq simple-wiki-additional-keywords
-              (quote ,(plist-get properties :keywords))))
+        (set (make-local-variable 'simple-wiki-additional-keywords)
+             (quote ,(plist-get properties :keywords))))
+
+      (when (quote ,(plist-get properties :outline))
+        (set (make-local-variable 'simple-wiki-outline-patterns)
+             (quote ,(plist-get properties :outline))))
+
+      (when (quote ,(plist-get properties :linebreak))
+        (set (make-local-variable 'simple-wiki-link-pattern)
+             (quote ,(plist-get properties :linebreak))))
+
+      (when (quote ,(plist-get properties :horiz))
+        (set (make-local-variable 'simple-wiki-horiz-line-pattern)
+             (quote ,(plist-get properties :horiz))))
+
+      (when (quote ,(plist-get properties :enum))
+        (set (make-local-variable 'simple-wiki-enum-pattern)
+             (quote ,(plist-get properties :enum))))
+
+      (when (quote ,(plist-get properties :bullet))
+        (set (make-local-variable 'simple-wiki-bullet-pattern)
+             (quote ,(plist-get properties :bullet))))
+
+      (when (quote ,(plist-get properties :indent))
+        (set (make-local-variable 'simple-wiki-indent-pattern)
+             (quote ,(plist-get properties :indent))))
+
+      (unless (equal simple-wiki-outline-patterns 'none)
+        (setq outline-regexp (car simple-wiki-outline-patterns))
+        (setq outline-heading-end-regexp (cdr simple-wiki-outline-patterns)))
+
+      (set (make-local-variable 'simple-wiki-tag-history) nil)
 
       (define-key ,(intern (concat "simple-" (symbol-name mode) "-mode-map"))
         "\C-c\C-e" 'simple-wiki-insert-emph)
@@ -607,6 +779,10 @@ Use the symbol 'none as the value if the wiki doesn't support the property."
         "\C-c\C-s" 'simple-wiki-insert-strong)
       (define-key ,(intern (concat "simple-" (symbol-name mode) "-mode-map"))
         "\C-c\C-t" 'simple-wiki-insert-tag)
+      (define-key ,(intern (concat "simple-" (symbol-name mode) "-mode-map"))
+        "\C-c\C-n" 'simple-wiki-next)
+      (define-key ,(intern (concat "simple-" (symbol-name mode) "-mode-map"))
+        "\C-c\C-p" 'simple-wiki-prev)
 
       (make-local-variable 'font-lock-defaults)
       (setq font-lock-multiline t)
@@ -620,6 +796,7 @@ Use the symbol 'none as the value if the wiki doesn't support the property."
 
 ;; mode definitions
 
+;; for historical reasons define `simple-wiki-mode'
 (simple-wiki-define-major-mode
  'wiki
  "Wiki"
@@ -638,6 +815,54 @@ Use the symbol 'none as the value if the wiki doesn't support the property."
  "Simple mode to edit wiki pages at http://www.oddmuse.org/.
 \\{simple-oddmuse-mode-map}"
  :camelcase 'none)
+
+;; just a start.  not very good yet.
+(simple-wiki-define-major-mode
+ 'mediawiki
+ "MediaWiki"
+ "Simple mode to edit mediawiki pages."
+ :camelcase 'none
+ :smilies 'none
+ :linebreak '("<br>" . 0)
+ :tags '(("b" . t) ("big" . t) ("blockquote" . t) ("caption" . t) ("code" . t)
+         ("center" . t) ("cite" . t) ("dfn" . t) ("dl" . t) ("em" . t)
+         ("i" . t) ("kbd" . t) ("math" . t) ("nowiki" . t) ("ol" . t)
+         ("pre" . t) ("samp" . t) ("small" . t) ("strike" . t) ("strong" . t)
+         ("sub" . t) ("sup" . t) ("tt" . t) ("u" . t) ("ul" . t) ("var" . t)
+         ("a" . t) ("div" . t) ("font" . t) ("table" . t) ("td" . t)
+         ("tr" . t))
+ :keywords
+ (list
+  '(simple-wiki-match-tag-i . (0 'simple-wiki-italic-face append))
+  '(simple-wiki-match-tag-b . (0 'simple-wiki-bold-face append))
+  '(simple-wiki-match-tag-u . (0 'simple-wiki-underline-face append))
+  '(simple-wiki-match-tag-tt . (0 'simple-wiki-teletype-face append))
+  '(simple-wiki-match-tag-em . (0 'simple-wiki-emph-face append))
+  '(simple-wiki-match-tag-strong . (0 'simple-wiki-strong-face append))
+  '(simple-wiki-match-tag-math . (0 'font-lock-string-face))
+  '(simple-wiki-match-tag-strike . (0 'simple-wiki-strike-face))
+
+  ;; tags
+  (list (concat "\\(</?\\)"
+                "\\([A-Za-z]+\\)"
+                "\\(\\([ \t]+[a-zA-Z]+\\)=\\(\".*\"\\)\\)*"
+                "\\(/?>\\)?")
+        '(1 default t t)
+        '(2 font-lock-function-name-face t t)
+        '(4 font-lock-variable-name-face t t)
+        '(5 font-lock-string-face t t)
+        '(6 default t t))
+
+  '(simple-wiki-match-tag-nowiki . (0 'simple-wiki-nowiki-face t))
+
+  ;; code blocks
+  ;; highlight of <code> and <pre> needs some more sophisticated stuff :(
+  '(simple-wiki-match-tag-code . (0 'simple-wiki-code-face t))
+  '(simple-wiki-match-tag-pre . (0 'simple-wiki-code-face t))
+
+  '(simple-wiki-match-code-block . (0 'simple-wiki-code-face t))))
+
+
 
 (provide 'simple-wiki)
 

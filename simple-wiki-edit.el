@@ -5,7 +5,7 @@
 ;; Author: Alex Schroeder <alex@gnu.org>
 ;;         David Hansen <david.hansen@physik.fu-berlin.de>
 ;; Maintainer: David Hansen <david.hansen@physik.fu-berlin.de>
-;; Version: 1.0.14
+;; Version: 1.0.15
 ;; Keywords: hypermedia
 ;; URL: http://www.emacswiki.org/cgi-bin/wiki.pl?SimpleWikiEditMode
 
@@ -46,6 +46,8 @@
 
 ;;; Change Log:
 
+;; 1.0.15
+;;   - moved `simple-wiki-next' and `simple-wiki-prev' to simple-wiki.el
 ;; 1.0.14
 ;;   - Fixed bug in `simple-wiki-link-at-point'
 ;; 1.0.13
@@ -78,7 +80,7 @@
 (require 'http-get)
 (require 'simple-wiki)
 
-(defvar simple-wiki-edit-version "1.0.14")
+(defvar simple-wiki-edit-version "1.0.15")
 
 (defvar simple-wiki-url nil
   "The URL of the current buffer.")
@@ -133,8 +135,6 @@ pressing C-c C-m during edits."
 (define-key simple-wiki-edit-mode-map (kbd "C-c C-f") 'simple-wiki-follow)
 (define-key simple-wiki-edit-mode-map (kbd "C-c C-m")
   'simple-wiki-minor-toggle)
-(define-key simple-wiki-edit-mode-map (kbd "C-c C-n") 'simple-wiki-next)
-(define-key simple-wiki-edit-mode-map (kbd "C-c C-p") 'simple-wiki-prev)
 (define-key simple-wiki-edit-mode-map (kbd "C-/") 'pcomplete)
 (define-key simple-wiki-edit-mode-map (kbd "C-c C-/") 'pcomplete)
 (define-key simple-wiki-edit-mode-map (kbd "C-c C-_") 'pcomplete)
@@ -151,22 +151,6 @@ pressing C-c C-m during edits."
      ((< num 0) (set 'simple-wiki-minor-p nil)))
     (message "simple-wiki-minor-p set to %S" simple-wiki-minor-p)
     simple-wiki-minor-p))
-
-(defun simple-wiki-next ()
-  "Goto the next WikiName."
-  (interactive)
-  (let ((case-fold-search nil))
-    (re-search-forward
-     (car simple-wiki-link-pattern)
-     nil t)))
-
-(defun simple-wiki-prev ()
-  "Goto the previous WikiName."
-  (interactive)
-  (let ((case-fold-search nil))
-    (re-search-backward
-     (car simple-wiki-link-pattern)
-     nil t)))
 
 (defun simple-wiki-edit-sentinel (proc message)
   "Sentinel for the http-get process."
