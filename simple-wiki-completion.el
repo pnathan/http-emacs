@@ -5,7 +5,7 @@
 ;; Filename: simple-wiki-completion.el
 ;; Package: simple-wiki-completion
 ;; Author: D. Goel <deego@glue.umd.edu>
-;; Maintainer: Pierre Gaston <pierre@gaston-karlaouzou.com>
+;; Maintainer: David Hansen <david.hansen@physik.fu-berlin.de>
 ;; Keywords:
 ;; Version: 1.0.12
 ;; Author's homepage: http://gnufans.net/~deego

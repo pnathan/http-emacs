@@ -4,7 +4,7 @@
 ;; Emacs Lisp Archive entry
 ;; Filename: simple-wiki-definitions.el
 ;; Package: simple-wiki
-;; Maintainer: Pierre Gaston <pierre@gaston-karlaouzou.com>
+;; Maintainer: David Hansen <david.hansen@physik.fu-berlin.de>
 
 ;; Keywords:
 ;; Version: 1.0.7

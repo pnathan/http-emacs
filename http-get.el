@@ -5,7 +5,7 @@
 ;; Author: Alex Schroeder <alex@gnu.org>
 ;;         Pierre Gaston <pierre@gaston-karlaouzou.com>
 ;;         David Hansen <david.hansen@physik.fu-berlin.de>
-;; Maintainer: Pierre Gaston <pierre@gaston-karlaouzou.com>
+;; Maintainer: David Hansen <david.hansen@physik.fu-berlin.de>
 ;; Version: 1.0.14
 ;; Keywords: hypermedia
 ;; URL: http://www.emacswiki.org/cgi-bin/wiki.pl?HttpGet
