@@ -85,6 +85,7 @@ See `http-filter-pre-insert-hook' and `http-filter-post-insert-hook'
 for places where you can do your own stuff such as HTML rendering.
 Argument PROC the proccess that is filtered.
 Argument STRING The string outputed bythe process."
+;  (message "got string %S" string)
   (with-current-buffer (process-buffer proc)
     (let ((moving (= (point) (process-mark proc))))
       (save-excursion
@@ -350,10 +351,11 @@ use `decode-coding-region' and get the coding system to use from
 		  (format "Host: %s\r\n" host)))  
     (when headers
       (setq message-headers (mapconcat (lambda (pair)
-					 (concat (car pair) ": " (cdr pair)))
+					 (concat (car pair) ": " (cadr pair)))
 				       headers
 				       "\r\n")))
-    (setq command (format "%s\r\n%s\r\n" start-line message-headers))
+    ;; mapconcat doesn't append the \r\n for the final line
+    (setq command (format "%s%s\r\n\r\n" start-line message-headers))
     (http-log (format "Connecting to %s %d\nCommand:\n%s\n" host port command))
     (set-process-sentinel proc (or sentinel 'ignore))
     (set-process-coding-system proc 'binary 'binary) ; we need \r\n in the headers!
