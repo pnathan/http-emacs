@@ -140,7 +140,11 @@ subexpression.")
 
 (defvar simple-wiki-indent-pattern
   '("^:+" . 0)
-  "Pair of the pattern to match indented text and th matching subexpression.")
+  "Pair of the pattern to match indented text and the matching subexpression.")
+
+(defvar simple-wiki-definition-pattern
+  '("^\\(;+.*?:\\)" . 1)
+  "Pair of the pattern to match definition lists and the subexpression.")
 
 (defvar simple-wiki-em-strings
   '("''" . "''")
@@ -173,11 +177,11 @@ subexpression.")
                  "\\([A-Za-z]+\\)"
                  "\\(\\([ \t]+[a-zA-Z]+\\)=\\(\".*\"\\)\\)*"
                  "\\(/?>\\)?")
-         '(1 default t t)
-         '(2 font-lock-function-name-face t t)
-         '(4 font-lock-variable-name-face t t)
-         '(5 font-lock-string-face t t)
-         '(6 default t t))
+         '(1 'default t t)
+         '(2 'font-lock-function-name-face t t)
+         '(4 'font-lock-variable-name-face t t)
+         '(5 'font-lock-string-face t t)
+         '(6 'default t t))
 
    '(simple-wiki-match-tag-nowiki . (0 'simple-wiki-nowiki-face t))
 
@@ -628,7 +632,12 @@ face used for highlighting and overwrite may be 'prepend,
   ;; bullet
   (unless (equal simple-wiki-bullet-pattern 'none)
     (simple-wiki-add-keyword simple-wiki-bullet-pattern
-                             'font-lock-builtin-face
+                             'font-lock-keyword-face
+                             t))
+  ;;definition lists
+  (unless (equal simple-wiki-definition-pattern 'none)
+    (simple-wiki-add-keyword simple-wiki-definition-pattern
+                             'font-lock-type-face
                              t))
   ;; emphasis
   (let (em-re)
@@ -696,6 +705,7 @@ as a list of keywords:
         :enum............... overwrite `simple-wiki-enum-pattern'
         :bullet............. overwrite `simple-wiki-bullet-pattern'
         :indent............. overwrite `simple-wiki-indent-pattern'
+        :deflist............ overwrite `simple-wiki-definition-pattern'
 
 Use the symbol 'none as the value if the wiki doesn't support the property."
   (eval
@@ -766,6 +776,10 @@ Use the symbol 'none as the value if the wiki doesn't support the property."
       (when (quote ,(plist-get properties :indent))
         (set (make-local-variable 'simple-wiki-indent-pattern)
              (quote ,(plist-get properties :indent))))
+
+      (when (quote ,(plist-get properties :deflist))
+        (set (make-local-variable 'simple-wiki-definition-pattern)
+             (quote ,(plist-get properties :deflist))))
 
       (unless (equal simple-wiki-outline-patterns 'none)
         (setq outline-regexp (car simple-wiki-outline-patterns))
@@ -839,19 +853,19 @@ Use the symbol 'none as the value if the wiki doesn't support the property."
   '(simple-wiki-match-tag-tt . (0 'simple-wiki-teletype-face append))
   '(simple-wiki-match-tag-em . (0 'simple-wiki-emph-face append))
   '(simple-wiki-match-tag-strong . (0 'simple-wiki-strong-face append))
-  '(simple-wiki-match-tag-math . (0 'font-lock-string-face))
-  '(simple-wiki-match-tag-strike . (0 'simple-wiki-strike-face))
+  '(simple-wiki-match-tag-math . (0 'font-lock-string-face append))
+  '(simple-wiki-match-tag-strike . (0 'simple-wiki-strike-face append))
 
   ;; tags
   (list (concat "\\(</?\\)"
                 "\\([A-Za-z]+\\)"
                 "\\(\\([ \t]+[a-zA-Z]+\\)=\\(\".*\"\\)\\)*"
                 "\\(/?>\\)?")
-        '(1 default t t)
-        '(2 font-lock-function-name-face t t)
-        '(4 font-lock-variable-name-face t t)
-        '(5 font-lock-string-face t t)
-        '(6 default t t))
+        '(1 'default t t)
+        '(2 'font-lock-function-name-face t t)
+        '(4 'font-lock-variable-name-face t t)
+        '(5 'font-lock-string-face t t)
+        '(6 'default t t))
 
   '(simple-wiki-match-tag-nowiki . (0 'simple-wiki-nowiki-face t))
 
