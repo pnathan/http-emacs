@@ -4,7 +4,7 @@
 
 ;; Author: Alex Schroeder <alex@gnu.org>
 ;; Maintainer: Pierre Gaston <pierre@gaston-karlaouzou.com>
-;; Version: 1.0.1
+;; Version: 1.0.3
 ;; Keywords: hypermedia
 ;; URL: http://www.emacswiki.org/cgi-bin/wiki.pl?SimpleWikiEditMode
 
@@ -35,6 +35,8 @@
 
 ;; ChangeLog:
 
+;; 1.0.3
+;;   - Changed `simple-wiki-link-pattern'.  Non ASCII chars should work now.
 ;; 1.0.2
 ;;   - Added a lot of font locking.
 ;; 1.0.1
@@ -43,8 +45,8 @@
 ;;; Code:
 
 (defconst simple-wiki-link-pattern
-  "\\<[A-Z\xc0-\xde]+[a-z\xdf-\xff]+\\([A-Z\xc0-\xde]+[a-z\xdf-\xff]*\\)+\\>"
-  ;;"\\<[:upper:][:lower:]+[:upper:][:lower:]+[:word:]*\\>"
+;;  "\\<[A-Z\xc0-\xde]+[a-z\xdf-\xff]+\\([A-Z\xc0-\xde]+[a-z\xdf-\xff]*\\)+\\>"
+  "\\<\\([A-Z][[:lower:]]+[A-Z][[:lower:]]+[[:lower:][:upper:]]*\\)"
   "The pattern used for finding WikiName.")
 
 
@@ -116,13 +118,13 @@
   :group 'simple-wiki-faces)
 
 (defface simple-wiki-teletype-face
-  '((((class color) (background dark)) (:background "grey10"))
+  '((((class color) (background dark)) (:background "grey15"))
     (((class color) (background light)) (:background "moccasin")))
   "Face for <tt>teletype</tt>."
   :group 'simple-wiki-faces)
 
 (defface simple-wiki-code-face
-  '((((class color) (background dark)) (:background "grey10"))
+  '((((class color) (background dark)) (:background "grey15"))
     (((class color) (background light)) (:background "moccasin")))
   "Face for code in Wiki pages."
   :group 'simple-wiki-faces)
@@ -130,7 +132,7 @@
 (defconst simple-wiki-font-lock-keywords
   (list
    ;; time stamp at the beginning of the buffer
-   '("^\\([0-9]+\\)[ \t]+\\(#.+?\\)\n"
+   '("\\`\\([0-9]+\\)[ \t]+\\(#.+?\\)\n"
      (1 font-lock-constant-face)
      (2 font-lock-warning-face))
 
@@ -138,25 +140,21 @@
    '("^=\\([^\n=]+\\)=[^=]"
      (1 'simple-wiki-heading-1-face))
    '("^=\\{2\\}\\([^\n=]+\\)=\\{2\\}[^=]"
-    (1 'simple-wiki-heading-2-face append))
+    (1 'simple-wiki-heading-2-face t))
    '("^=\\{3\\}\\([^\n=]+\\)=\\{3\\}[^=]"
-     (1 'simple-wiki-heading-3-face append))
+     (1 'simple-wiki-heading-3-face t))
    '("^=\\{4\\}\\([^\n=]+\\)=\\{4\\}[^=]"
-     (1 'simple-wiki-heading-4-face append))
+     (1 'simple-wiki-heading-4-face t))
    '("^=\\{5\\}\\([^\n=]+\\)=\\{5\\}[^=]"
-     (1 'simple-wiki-heading-5-face append))
+     (1 'simple-wiki-heading-5-face t))
    '("^=\\{6\\}\\([^\n=]+\\)=\\{6\\}[^=]"
-     (1 'simple-wiki-heading-6-face append))
+     (1 'simple-wiki-heading-6-face t))
 
    '("<\\(/?[a-z]+\\)" (1 font-lock-function-name-face t)) ; tags
    '("^[*#]\\([*#]+\\)" (0 font-lock-constant-face t))     ; enums
    '("^\\([*#]\\)[^*#]" (1 font-lock-builtin-face t))      ; enums
 
    ;; FIXME: emphasis and tags may be multi line but seems to work well this way
-
-   ;; emphasis
-   '(simple-wiki-match-emph . 'simple-wiki-emph-face)
-   '(simple-wiki-match-strong . 'simple-wiki-strong-face)
 
    ;; other tags
    '(simple-wiki-match-italic . (0 'simple-wiki-italic-face prepend))
@@ -165,6 +163,10 @@
    '(simple-wiki-match-teletype . '(0 'simple-wiki-teletype-face prepend))
    '(simple-wiki-match-pre . (0 'simple-wiki-code-face t))
    '(simple-wiki-match-code-tag . (0 'simple-wiki-code-face t))
+
+   ;; emphasis
+   '(simple-wiki-match-emph . 'simple-wiki-emph-face)
+   '(simple-wiki-match-strong . 'simple-wiki-strong-face)
 
    ;; code blocks
    '("^[\t ]" (simple-wiki-match-code (simple-wiki-check-in-code-block) nil

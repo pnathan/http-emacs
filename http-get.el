@@ -54,15 +54,14 @@
 
 (defvar http-get-version "1.0.10")
 
-
-;;Proxy
+;; Proxy
 (defvar http-proxy-host nil
   "*If nil dont use proxy, else name of proxy server.")
 
 (defvar http-proxy-port nil
   "*Port number of proxy server.  Default is 80.")
 
-;;Coding sytem
+;; Coding sytem
 (defvar http-coding 'iso-8859-1
    "default coding to be use when the string is inserted in the buffer
 This coding will be modified on Finding the content-type header")
@@ -161,8 +160,8 @@ Parse the status line, headers and chunk"
 	      (setq http-parser-state 'header)
 	      (setq parsed-string (substring parsed-string (match-end 0))))
 	  ;; status line not found
-	    (setq http-not-yet-parsed parsed-string)
-	    (setq parsed-string "")))
+          (setq http-not-yet-parsed parsed-string)
+          (setq parsed-string "")))
 
        ((eq http-parser-state 'header)
 	;;parsing headers

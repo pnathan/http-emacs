@@ -85,7 +85,7 @@ Is a list of the form
 
 ;;redefine the open function to take advantage of completions
 (define-key simple-wiki-edit-mode-map (kbd "C-c C-o") 'swc-open)
-(define-key simple-wiki-edit-mode-map (kbd "C-c C-g") 'swc-follow)
+;; (define-key simple-wiki-edit-mode-map (kbd "C-c C-g") 'swc-follow)
 
 ;; hooks for renaming the buffers  and setting current wiki nickname
 (add-hook 'simple-wiki-edit-mode-hook 'rename-hook)
@@ -195,6 +195,7 @@ Not to be confused with `swc-pages'")
      (simple-wiki-link page) simple-wiki-save-function nil
      (swd-http-version nick) (swd-http-coding nick))))
 
+;; obsolete, remove it
 (defun swc-follow ()
   "Follow the WikiName at point."
   (interactive)

@@ -45,6 +45,8 @@
 
 ;;; ChaneLog:
 
+;; 1.0.10
+;;   - Added support for links with non ASCII chars.
 ;; 1.0.9
 ;;   - Added "Connection: close" header to http-get call for HTTP/1.1.
 ;;   - `simple-wiki-edit-mode' now is called when the http-get process
@@ -195,16 +197,29 @@ Optional SAVE-FUNC is a function to use when saving."
       (set (make-local-variable 'simple-wiki-content-type) content-type)
       (set (make-local-variable 'simple-wiki-save-function) save-func))))
 
+(defun dh-sw-link ()
+  (interactive)
+  (message (simple-wiki-link-at-point)))
+
+(defun simple-wiki-link-at-point ()
+  "Return the wiki link at point or nil if there is none."
+  (let ((str (word-at-point)))
+    (if (string-match simple-wiki-link-pattern str)
+        (match-string 1 str)
+      nil)))
+
+
 (defun simple-wiki-follow ()
   "Follow the WikiName at point."
   (interactive)
-  (let ((page (word-at-point))
+  (let ((page (simple-wiki-link-at-point))
 	(case-fold-search nil))
-    (if (and page
-	     (string-match
-	      simple-wiki-link-pattern
-	      page))
-	(simple-wiki-edit (simple-wiki-link page) simple-wiki-save-function)
+    (if page
+        (simple-wiki-edit (simple-wiki-link page)
+                          simple-wiki-save-function
+                          nil
+                          simple-wiki-http-version
+                          simple-wiki-content-type)
       (error "No WikiName at point"))))
 
 (defun simple-wiki-link (page)
