@@ -5,7 +5,7 @@
 ;; Author: Alex Schroeder <alex@gnu.org>
 ;;         David Hansen <david.hansen@physik.fu-berlin.de>
 ;; Maintainer: David Hansen <david.hansen@physik.fu-berlin.de>
-;; Version: 1.0.8
+;; Version: 1.0.9
 ;; Keywords: hypermedia
 ;; URL: http://www.emacswiki.org/cgi-bin/wiki.pl?SimpleWikiEditMode
 
@@ -36,11 +36,13 @@
 
 ;;; Change Log:
 
+;; 1.0.9
+;;   - Added mark up of regions, tag regions.
 ;; 1.0.8
 ;;   - Added `simple-phpwiki-mode', `simple-mediawiki-mode' and
-;;     `simple-jspwiki-mode'
+;;     `simple-jspwiki-mode'.
 ;; 1.0.7
-;;   - moved `simple-wiki-next' and `simple-wiki-prev' here
+;;   - Moved `simple-wiki-next' and `simple-wiki-prev' here.
 ;;   - Renamed -regexps to -patterns.
 ;;   - History and default value when inserting tags.
 ;;   - Some more work on the interface.
@@ -64,14 +66,17 @@
 
 (require 'font-lock)
 
-(defvar simple-wiki-version "1.0.8")
+(defvar simple-wiki-version "1.0.9")
+
+(defvar simple-wiki-common-hook nil
+  "Hook to run in every simple-wiki mode.")
 
 
 
 ;; the default value are for the emacswiki
 
 (defvar simple-wiki-tag-list
-  ;; xemacs requires an alist for `completing-read'.  the cdr is not used.
+  ;; xemacs requires an alist for `completing-read'.
   '(("u" . nil) ("b" . nil) ("i" . nil) ("strong" . nil) ("em" . nil)
     ("nowiki" . nil) ("code" . nil) ("tt" . nil) ("pre". t))
   "Alist of supported tags used for `completing-read'.
@@ -376,53 +381,10 @@ subexpression.")
       (store-match-data (list beg end))
       t)))
 
-(defun simple-wiki-match-tag-i (limit)
-  "Font lock matcher for regions within <i></i>."
-  (simple-wiki-match-tag "i" limit))
-
-(defun simple-wiki-match-tag-b (limit)
-  "Font lock matcher for regions within <b></b>."
-  (simple-wiki-match-tag "b" limit))
-
-(defun simple-wiki-match-tag-u (limit)
-  "Font lock matcher for regions within <u></u>."
-  (simple-wiki-match-tag "u" limit))
-
-(defun simple-wiki-match-tag-tt (limit)
-  "Font lock matcher for regions within <tt></tt>."
-  (simple-wiki-match-tag "tt" limit))
-
-(defun simple-wiki-match-tag-nowiki (limit)
-  "Font lock mather for regions within <nowiki></nowiki>."
-  (simple-wiki-match-tag "nowiki" limit))
-
-(defun simple-wiki-match-tag-code (limit)
-  "Font lock matcher for regions within <code></code>."
-  (simple-wiki-match-tag "code" limit))
-
-(defun simple-wiki-match-tag-pre (limit)
-  "Font lock matcher for regions within <pre></pre>."
-  (simple-wiki-match-tag "pre" limit))
-
-(defun simple-wiki-match-tag-em (limit)
-  "Font lock matcher for regions within <em></em>."
-  (simple-wiki-match-tag "em" limit))
-
-(defun simple-wiki-match-tag-strong (limit)
-  "Font lock matcher for regions within <strong></strong>."
-  (simple-wiki-match-tag "strong" limit))
-
-(defun simple-wiki-match-tag-math (limit)
-  "Font lock matcher for regions within <math></math>."
-  (simple-wiki-match-tag "math" limit))
-
-(defun simple-wiki-match-tag-strike (limit)
-  "Font lock matcher for regions within <strike></strike>."
-  (simple-wiki-match-tag "strike" limit))
-
-(defun simple-wiki-match-tag-verbatim (limit)
-  "Font lock matcher for regions within <verbatim></verbatim>."
-  (simple-wiki-match-tag "verbatim" limit))
+(dolist (tag '("i" "b" "u" "tt" "nowiki" "code" "pre" "em"
+               "strong" "math" "strike" "verbatim"))
+  (eval `(defun ,(intern (concat "simple-wiki-match-tag-" tag)) (limit)
+           (simple-wiki-match-tag ,tag limit))))
 
 (defun simple-wiki-end-of-code-block ()
   "Return the end of a code block if the cursor is within a code block.
@@ -464,30 +426,75 @@ Return nil otherwise."
 
 ;; editing functions
 
+(defun simple-wiki-strings-around-region (min max strmin strmax)
+  "Insert the strings STRMIN and STRMAX at positions MIN and MAX."
+  (save-excursion
+    (goto-char min)
+    (insert strmin)
+    (goto-char (+ max (length strmin)))
+    (insert strmax)))
+
+(defun simple-wiki-emph-region (min max)
+  "Marke up text of the region emphasized."
+  (interactive "r")
+  (if (equal simple-wiki-em-strings 'none)
+      (error "No emphasis strings defined.")
+    (simple-wiki-strings-around-region
+     min max
+     (car simple-wiki-em-strings)
+     (cdr simple-wiki-em-strings))))
+
+(defun simple-wiki-strong-region (min max)
+  "Marke up text of the region strong."
+  (interactive "r")
+  (if (equal simple-wiki-strong-strings 'none)
+      (error "No strong strings defined.")
+    (simple-wiki-strings-around-region
+     min max
+     (car simple-wiki-strong-strings)
+     (cdr simple-wiki-strong-strings))))
+
+(defun simple-wiki-strong-emph-region (min max)
+  "Mark up text of the region strong emphasized."
+  (interactive "r")
+  (if (equal simple-wiki-strong-em-strings 'none)
+      (error "No strong emphasis strings defined.")
+    (simple-wiki-strings-around-region
+     min max
+     (car simple-wiki-strong-em-strings)
+     (cdr simple-wiki-strong-em-strings))))
+
+(defun simple-wiki-insert-around-pos (before-str after-str)
+  "Insert strings BEFORE-STR and AFTER-STR before and after the cursor."
+  (insert before-str)
+  (save-excursion (insert after-str)))
+
 (defun simple-wiki-insert-emph ()
   "Insert emphasized text."
   (interactive)
   (if (equal simple-wiki-em-strings 'none)
       (error "No emphasis strings defined.")
-    (insert (car simple-wiki-em-strings))
-    (save-excursion
-      (insert (cdr simple-wiki-em-strings)))))
+    (simple-wiki-insert-around-pos
+     (car simple-wiki-em-strings)
+     (cdr simple-wiki-em-strings))))
 
 (defun simple-wiki-insert-strong ()
   "Insert strong text."
   (interactive)
   (if (equal simple-wiki-strong-strings 'none)
       (error "No strong strings defined.")
-    (insert (car simple-wiki-strong-strings))
-    (save-excursion (insert (cdr simple-wiki-strong-strings)))))
+    (simple-wiki-insert-around-pos
+     (car simple-wiki-strong-strings)
+     (cdr simple-wiki-strong-strings))))
 
 (defun simple-wiki-insert-strong-emph ()
   "Insert strong emphasized text."
   (interactive)
   (if (equal simple-wiki-strong-em-strings 'none)
       (error "No strong emphasis strings defined.")
-    (insert (car simple-wiki-strong-em-strings))
-    (save-excursion (insert (cdr simple-wiki-strong-em-strings)))))
+    (simple-wiki-insert-around-pos
+     (car simple-wiki-strong-em-strings)
+     (cdr simple-wiki-strong-em-strings))))
 
 (defun simple-wiki-insert-tag-string (tag &optional closing)
   "Insert a the string \"<TAG>\" or \"</TAG>\" if CLOSING is non-nil."
@@ -496,25 +503,98 @@ Return nil otherwise."
     (insert tag)
     (insert ">")))
 
+(defun simple-wiki-get-tag ()
+  (let (prompt)
+    (if (and simple-wiki-tag-history (car simple-wiki-tag-history))
+        (setq prompt (concat "Tag (" (car simple-wiki-tag-history) "): "))
+      (setq prompt "Tag: "))
+    (setq tag (completing-read prompt simple-wiki-tag-list nil nil ""
+                               'simple-wiki-tag-history
+                               (car simple-wiki-tag-history))))
+  (unless (assoc tag simple-wiki-tag-list)
+    (add-to-list 'simple-wiki-tag-list (cons tag nil)))
+  tag)
+
+(defun simple-wiki-tag-region (min max &optional tag)
+  "Insert opening and closing text at begin and end of the region."
+  (interactive "r")
+  (unless tag
+    (setq tag (simple-wiki-get-tag)))
+  (let ((taglen (+ 2 (length tag))))
+    (save-excursion
+      (goto-char min)
+      (simple-wiki-insert-tag-string tag)
+      (when (and (assoc tag simple-wiki-tag-list)
+                 (cdr (assoc tag simple-wiki-tag-list)))
+        (setq taglen (1+ taglen))
+        (insert "\n"))
+      (goto-char (+ max taglen))
+      (when (and (assoc tag simple-wiki-tag-list)
+                 (cdr (assoc tag simple-wiki-tag-list)))
+        (insert "\n"))
+      (simple-wiki-insert-tag-string tag t))))
+
 (defun simple-wiki-insert-tag (&optional tag)
   (interactive)
   "Insert a tag and put the cursor between the opening and closing tag."
   (unless tag
-    (let (prompt)
-      (if (and simple-wiki-tag-history (car simple-wiki-tag-history))
-          (setq prompt (concat "Tag (" (car simple-wiki-tag-history) "): "))
-        (setq prompt "Tag: "))
-      (setq tag (completing-read prompt simple-wiki-tag-list nil nil ""
-                                 'simple-wiki-tag-history
-                                 (car simple-wiki-tag-history))))
-    (unless (assoc tag simple-wiki-tag-list)
-      (add-to-list 'simple-wiki-tag-list (cons tag nil))))
+    (setq tag (simple-wiki-get-tag)))
   (simple-wiki-insert-tag-string tag)
   (save-excursion (simple-wiki-insert-tag-string tag t))
   (when (and (assoc tag simple-wiki-tag-list)
              (cdr (assoc tag simple-wiki-tag-list)))
     (insert "\n")
     (save-excursion (insert "\n"))))
+
+(if (featurep 'xemacs)
+    (defun simple-wiki-active-mark ()
+      "Return non nil if the mark is active."
+      (and zmacs-regions (mark)))
+  (defun simple-wiki-active-mark ()
+    "Return non nil if the mark is active."
+    (and transient-mark-mode mark-active)))
+
+(defun simple-wiki-insert-or-region-emph ()
+  "Insert emphasized text.
+If in `transient-mark-mode' and the region is active markup the region
+emphasized."
+  (interactive)
+  (if (simple-wiki-active-mark)
+      (let ((beg (min (point) (mark))) (end (max (point) (mark))))
+        (simple-wiki-emph-region beg end))
+    (simple-wiki-insert-emph)))
+
+(defun simple-wiki-insert-or-region-strong ()
+  "Insert strong text.
+If in `transient-mark-mode' and the region is active markup the region
+strong."
+  (interactive)
+  (if (simple-wiki-active-mark)
+      (let ((beg (min (point) (mark))) (end (max (point) (mark))))
+        (simple-wiki-strong-region beg end))
+    (simple-wiki-insert-strong)))
+
+(defun simple-wiki-insert-or-region-strong-emph ()
+  "Insert strong emphasized text.
+If in `transient-mark-mode' and the region is active markup the region
+strong emphasized."
+  (interactive)
+  (if (simple-wiki-active-mark)
+      (let ((beg (min (point) (mark))) (end (max (point) (mark))))
+        (simple-wiki-strong-emph-region beg end))
+    (simple-wiki-insert-strong-emph)))
+
+(defun simple-wiki-insert-or-region-tag (&optional tag)
+  "Insert opening and closing text around the cursor.
+If in `transient-mark-mode' and the region is active put the tags around
+the region."
+  (interactive)
+  (unless tag
+    (setq tag (simple-wiki-get-tag)))
+  (if (simple-wiki-active-mark)
+      (let ((beg (min (point) (mark))) (end (max (point) (mark))))
+        (simple-wiki-tag-region beg end tag))
+    (simple-wiki-insert-tag tag)))
 
 
 
@@ -739,11 +819,11 @@ Use the symbol 'none as the value if the wiki doesn't support the property."
         (setq outline-heading-end-regexp (cdr simple-wiki-outline-patterns)))
 
       (define-key ,(intern (concat "simple-" (symbol-name mode) "-mode-map"))
-        "\C-c\C-e" 'simple-wiki-insert-emph)
+        "\C-c\C-e" 'simple-wiki-insert-or-region-emph)
       (define-key ,(intern (concat "simple-" (symbol-name mode) "-mode-map"))
-        "\C-c\C-s" 'simple-wiki-insert-strong)
+        "\C-c\C-s" 'simple-wiki-insert-or-region-strong)
       (define-key ,(intern (concat "simple-" (symbol-name mode) "-mode-map"))
-        "\C-c\C-t" 'simple-wiki-insert-tag)
+        "\C-c\C-t" 'simple-wiki-insert-or-region-tag)
       (define-key ,(intern (concat "simple-" (symbol-name mode) "-mode-map"))
         "\C-c\C-n" 'simple-wiki-next)
       (define-key ,(intern (concat "simple-" (symbol-name mode) "-mode-map"))
@@ -755,7 +835,8 @@ Use the symbol 'none as the value if the wiki doesn't support the property."
       (setq font-lock-defaults  '(simple-wiki-font-lock-keywords t))
       (goto-address)
       (font-lock-mode 1)
-      (setq indent-tabs-mode nil))))
+      (setq indent-tabs-mode nil)
+      (run-hooks 'simple-wiki-common-hook))))
 
 
 
@@ -872,7 +953,7 @@ Use the symbol 'none as the value if the wiki doesn't support the property."
               nil nil nil)
 
  :outline '("[ \t]*!+" . "\n")
- 
+
  :em-strings '("_" . "_")
 
  :strong-strings '("*" . "*")
