@@ -860,7 +860,7 @@ Use the symbol 'none as the value if the wiki doesn't support the property."
   '(simple-wiki-match-tag-code . (0 'simple-wiki-code-face t))
   '(simple-wiki-match-tag-pre . (0 'simple-wiki-code-face t))
 
-  '(simple-wiki-match-code-block . (0 'simple-wiki-code-face t))))
+  '("^ .*$" . (0 'simple-wiki-code-face t))))
 
 
 
