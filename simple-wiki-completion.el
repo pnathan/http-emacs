@@ -1,5 +1,5 @@
 ;;; simple-wiki-completion.el ---
-;; Time-stamp: <2003-04-01 09:52:46 deego>
+;; Time-stamp: <2003-04-01 11:49:46 deego>
 ;; Copyright (C) 2003 D. Goel
 ;; Emacs Lisp Archive entry
 ;; Filename: simple-wiki-completion.el
@@ -126,35 +126,49 @@ Is a list of the form
       (setq tail (cdr tail)))
     )
   ;look for index page associated with nick
-  (let ((refpage (concat (swd-base-url nick) (swd-index-parameters nick))))
-  (if (null refpage)
-      nil
-    (let (proc pages  (progress 60))     
-      (setq proc (http-get refpage nil  (lambda (proc message) nil) (swd-http-version nick)))     
-      ;; wait for the process to end
-      ;; or wait  60 seconds
-      (while (and (eq (process-status proc) 'open)  (> progress 0))
-	(sit-for 1)
-	;; (setq status  (process-status proc))
-	(setq progress (1- progress) )
-	(message (format "Building completion list %d " progress ))
-	)
-	;;parse the entries
-	(setq pages 
-	      (mapcar
-	       (lambda (arg) (list arg))
-	       (split-string 
-		(buffer-string))))
-       ;; get rid of thebuffer
-      (kill-buffer (process-buffer proc))
-      (push (list nick pages) swc-pages)))
-    )
-  )
+  (let ((refpage (concat (swd-base-url nick) (swd-index-parameters
+					      nick)))
+	pages pageslist)
+    (if (null refpage)
+	nil
+      (setq pages (funcall swc-pages-get-function refpage
+			   (swd-http-version nick)))
+      
+      (setq pageslist
+	    (mapcar (lambda (arg) (list arg)) pages))
+      (push (list nick pageslist) swc-pages))))
   
+(defcustom swc-pages-get-function 'swc-pages-get-http-get
+  "try swc-pages-get-w3m if you prefer w3m.")
+
+(defun swc-pages-get-http-get (refpage &optional http-version)
+  (let (proc pages  (progress 60))     
+    (setq proc 
+	  (http-get refpage nil  
+		    (lambda (proc message) nil) (swd-http-version nick)))     
+    ;; wait for the process to end
+    ;; or wait  60 seconds
+    (while (and (eq (process-status proc) 'open)  (> progress 0))
+      (sit-for 1)
+      ;; (setq status  (process-status proc))
+      (setq progress (1- progress) )
+      (message (format "Building completion list %d " progress ))
+      )
+    ;;parse the entries
+    (setq pages 
+	  (split-string 
+	   (buffer-string)))
+       ;; get rid of thebuffer
+    (kill-buffer (process-buffer proc))))
 
 
-
-
+(defun swc-pages-get-w3m  (refpage &optional http-version)
+  "retrieve the index page associated with nick and build the
+completion list"
+  (split-string
+   (shell-command-to-string
+    (concat "w3m -dump \""
+	    refpage "\""))))
 
 (defun swc-completions-get (nick)
   (let ((assoced (assoc nick swc-pages)))
