@@ -37,7 +37,8 @@
 ;;; Change Log:
 
 ;; 1.0.8
-;;   - Added `simple-phpwiki-mode' and `simple-mediawiki-mode'
+;;   - Added `simple-phpwiki-mode', `simple-mediawiki-mode' and
+;;     `simple-jspwiki-mode'
 ;; 1.0.7
 ;;   - moved `simple-wiki-next' and `simple-wiki-prev' here
 ;;   - Renamed -regexps to -patterns.
@@ -954,8 +955,7 @@ Use the symbol 'none as the value if the wiki doesn't support the property."
 
  :em-patterns (list '("\\(\\W\\|^\\)_.*?_" . 0)
                     '("\\W\\*.*?\\*" . 0) ; bold at bol is a bullet list
-                    ;; FIXME: *_blah_* at bol is a bullet list
-                    (cons (concat "\\(\\W\\|^\\)\\(\\*_\\|_\\*\\)"
+                    (cons (concat "\\(\\(\\W\\|^\\)_\\*\\|\\W\\*_\\)"
                                   ".*?\\(\\_*\\|\\*_\\)")  0))
 
  :enum '("^\\([-*#o+ \t]*#+\\)\\([^-#*+]\\|$\\)" . 1)
@@ -1027,6 +1027,10 @@ Use the symbol 'none as the value if the wiki doesn't support the property."
  :outline '("[ \t]*!+" . "\n")
 
  :strong-strings '("__" . "__")
+
+ :indent '("^;[ \t]*:" . 0)
+
+ :deflist '("^\\(;+[ \t]*[^ \t]+?:\\)" . 1)
 
  :em-patterns (list '("\\(\\W\\|^\\)''.*?''" . 0)
                     '("\\(\\W\\|^\\)__.*?__" . 0)
