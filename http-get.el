@@ -191,7 +191,7 @@ Parse the status line, headers and chunk"
 		    (setq parsed-string "")
 		    (setq http-parser-state 'trailer)
 		    ;;dirty=FIXME : we delete the process
-		    (delete-process proc)
+		   ;; (delete-process proc)
 		    )
 		      ;;we don't have the next chunk-size yet
 		(setq http-not-yet-parsed parsed-string)

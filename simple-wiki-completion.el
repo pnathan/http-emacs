@@ -1,5 +1,5 @@
 ;;; simple-wiki-completion.el ---
-;; Time-stamp: <2003-04-03 10:57:41 deego>
+;; Time-stamp: <2003-04-12 09:19:11 pgas>
 ;; Copyright (C) 2003 D. Goel
 ;; Emacs Lisp Archive entry
 ;; Filename: simple-wiki-completion.el
@@ -7,13 +7,11 @@
 ;; Author: D. Goel <deego@glue.umd.edu>
 ;; Maintainer: Pierre Gaston <pierre@gaston-karlaouzou.com>
 ;; Keywords:
-;; Version: 1.0.7
+;; Version: 1.0.9
 ;; Author's homepage: http://gnufans.net/~deego
 ;; For latest version:
 (defconst simple-wiki-completion-home-page
-  "http://gnufans.net/~deego")
-
-
+  "http://savannah.nongnu.org/projects/http-emacs/")
  
 ;; This file is NOT (yet) part of GNU Emacs.
  
@@ -31,33 +29,24 @@
 ;; along with GNU Emacs; see the file COPYING.  If not, write to the
 ;; Free Software Foundation, Inc., 59 Temple Place - Suite 330,
 ;; Boston, MA 02111-1307, USA.
- 
-
 
 ;; INSTRUCTIONS: Simply try out one of the example functions 
 ;; like M-x swc-emacswiki-browse. 
 
-;; Don't forget to get the LATEST http-get.el, http-post.el,
-;; simple-wiki-edit.el and simple-wiki.el from
-;; http://www.emacswiki.org/elisp/index.html
-
-
 
 ; change
+;;1.09
+;; - fixe bugs and the look of http-get version  of building completion
 ;;1.08 
 ;; - put back completion with w3m
 ;;1.07
 ;; -change to swc-browse so that it is more flexible (Todo completion on nicknmae)
-;; -added Pierre Gaston wiki 
 ;;1.06
 ;; - added swc-nick-current 
 ;; - redefine the open function binding to take advantage of completionsw
 ;; - redefine the follow function binding to take advantage of completions
 ;; - move buffer renaming in a hook to keep working with open and follow functions
 
-;;TODO
-;; make nice variables to be able to define a wiki 
-;;  (ie, url, http version proxy ...)
 
 ;; See also:
 
@@ -74,22 +63,18 @@
 ;; Code:
 ;;; Real Code:
 
-(defvar simple-wiki-completion-version "1.0.7")
+(defvar simple-wiki-completion-version "1.0.9")
 
 (defvar swc-completions nil)
 
 (defcustom simple-wiki-completion-ignore-case t
   "" )
 
-
-
 (defvar swc-pages nil
   "Not to be confused with `swc-pages-completion'.
 Is a list of the form 
  ((code1 ((pg1) (pg2) (pg3...))  (code2 .....)) "
   )
-
-
 
 ;;redefine the open function to take advantage of completions
 (define-key simple-wiki-edit-mode-map (kbd "C-c C-o") 'swc-open)
@@ -112,13 +97,9 @@ Is a list of the form
 	 )
  )
 
-
-
 (defun swc-completions-nullify ()
   (interactive)
   (setq swc-pages nil))
-
-
 
 (defun swc-completions-make (nick)
   "retrieve the index page associated with nick and build the completion list"
@@ -146,17 +127,25 @@ Is a list of the form
   "try swc-pages-get-w3m if you prefer w3m.")
 
 (defun swc-pages-get-http-get (refpage &optional http-version)
-  (let (proc pages  (progress 60))     
+  (let (proc pages  (progress 60) (progress-bar "Building competions: "))     
     (setq proc 
 	  (http-get refpage nil  
 		    (lambda (proc message) nil) (swd-http-version nick)))     
     ;; wait for the process to end
     ;; or wait  60 seconds
     (while (and (eq (process-status proc) 'open)  (> progress 0))
-      (sit-for 1)
-      ;; (setq status  (process-status proc))
-      (setq progress (1- progress) )
-      (message (format "Building completion list %d " progress ))
+      ;; yank from eldoc
+      (setq progress-bar (concat progress-bar "."))
+      (cond ((fboundp 'display-message)
+           ;; XEmacs 19.13 way of preventing log messages.
+                  (display-message 'no-log progress-bar))
+          (t
+           ;; Emacs way of preventing log messages.
+           (let ((message-log-max nil))
+	     (message  progress-bar)
+	     )))
+       (sleep-for 1)
+       (setq progress (1- progress) )
       )
     ;;parse the entries
     (setq pages 
@@ -164,7 +153,7 @@ Is a list of the form
 	   (buffer-string)))
        ;; get rid of thebuffer
     (kill-buffer (process-buffer proc))
-     pages))
+    pages))
 
 
 (defun swc-pages-get-w3m  (refpage &optional http-version)
@@ -185,6 +174,7 @@ completion list"
 (defvar swc-savefn-current nil)
 
 (defvar swc-tmp-pages nil "temporary variable. ")
+
 (defvar swc-pages-completion nil
   "Within each buffer, this variable shall be bound to a list of all
 pages, so dynamic completion works while editing. 
@@ -202,10 +192,8 @@ Not to be confused with `swc-pages'
  	   (page (completing-read "Page: " pages)))
      (simple-wiki-edit (simple-wiki-link page) simple-wiki-save-function nil (swd-http-version nick))
      )
-   
     )
  
-
 (defun swc-follow ()
   "Follow the WikiName at point."
   (interactive)
@@ -219,41 +207,34 @@ Not to be confused with `swc-pages'
 	(simple-wiki-edit (simple-wiki-link page) simple-wiki-save-function  nil (swd-http-version nick))
       (error "No WikiName at point"))))
 
-
 (defun swc-browse ( &optional nick page)
    (interactive)
-    (if (not nick)
-	(setq nick (read-from-minibuffer "Nickname :")))
+   (if (not nick)
+       (setq nick (read-from-minibuffer "Nickname :")))
+    (make-local-hook 'pre-command-hook)
     
-    (if (not page)
-	(setq page (let* (
-	   (pages (ignore-errors (swc-completions-get nick)))
-	   (completion-ignore-case simple-wiki-completion-ignore-case)
-	   (matched (completing-read "Page: " pages)))
-		    (setq swc-tmp-pages (mapcar 'car pages))
-		    matched
-		    )))
-    
-    (simple-wiki-edit 
-     (concat 
-      (swd-base-url nick)
-      (swd-additional-parameters nick)
-      page)
-     (swd-save-func nick)
-     nil
-     (swd-http-version nick)
-     )
-    (setq swc-pages-completion swc-tmp-pages))
-  
-
-
+   (let* ((pages (swc-completions-get nick))
+	 (completion-ignore-case simple-wiki-completion-ignore-case)
+	 (swc-tmp-pages (mapcar 'car pages))
+	 )
+     (if (not page)
+	 (setq page (completing-read "Page: " pages)))
+     (simple-wiki-edit 
+      (concat 
+       (swd-base-url nick)
+       (swd-additional-parameters nick)
+       page)
+      (swd-save-func nick)
+      nil
+      (swd-http-version nick)
+      )
+     (setq swc-pages-completion swc-tmp-pages)))
 
 ;;;###autoload
 (defun swc-emacswiki-browse  ()
   (interactive)
     (swc-browse "ew")
     )
-
 
 (defun swc-oddmuse-browse  ()
   (interactive)
@@ -264,6 +245,7 @@ Not to be confused with `swc-pages'
   (interactive)
     (swc-browse "octave")
     )
+
 (defun swc-fsedu-browse  ()
   (interactive)
     (swc-browse "fsedu")
@@ -274,14 +256,8 @@ Not to be confused with `swc-pages'
     (swc-browse "pierre")
      )
 
-
 (defcustom swc-summary-default "*"
   "")
-
-
-
-
-  
   
 (provide 'simple-wiki-completion)
 (run-hooks 'simple-wiki-completion-after-load-hooks)
