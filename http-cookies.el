@@ -37,9 +37,6 @@
 
 ;;; Code:
 
-(defconst http-token-regexp "[^][()<>@,;:\\\\\"/?={} \t\xf0-\xff\x00-\x1f]+"
-  "Token as described in RFC 2616.")
-
 (defgroup http-emacs ()
   "Simple HTTP client implementation in elisp.")
 
@@ -53,13 +50,22 @@
   :type 'file
   :group 'http-emacs)
 
+(defconst http-token-value-regexp
+  "^[ \t]*\\(.*?\\)[ \t]*=[ \t]*\"?\\(.*?\\)\"?[ \t]*;?[ \t]*$"
+  "Regexp to match a token=\"value\"; in a cookie.")
+
+
+
+;; functions for parsing the header
 
 (defun http-cookies-ns-to-rfc (line)
   "Make the header value LINE RFC compatible.
 Make old netscape cookies a bit more RFC 2109 compatible by quoting
-the \"expires\" value."
+the \"expires\" value.  We need this to be able to properly split
+the header value if there is more than one cookie."
   (let ((start 0))
-    (while (string-match "expires[ \t]*=[ \t]*\\([^\";]+?\\);" line start)
+    (while (string-match "expires[ \t]*=[ \t]*\\([^\";]+?\\)\\(;\\|$\\)"
+                         line start)
       (setq start (match-end 0))
       (setq line (replace-match "\"\\1\"" t nil line 1)))
     line))
@@ -108,28 +114,36 @@ substrings."
     (add-to-list 'strings (substring header-value beg))
     strings))
 
-(defun http-cookies-parse-cookie (str)
-  (let (name value)
-    (if (string-match "^[ \t]*\\(.*?\\)[ \t]*=[ \t]*\"?\\(.*?\\)\"?[ \t]*;" str)
-        (progn
-          (setq name (match-string 1 str))
-          (setq value (match-string 2 str))
-          (message "Cookie name: %s" name)    ; debug
-          (message "Cookie value: %s" value)) ; debug
-      (message "Cannot parse cookie %s" str))))
+(defun http-cookies-parse-cookie (string)
+  "Parse one cookie.
+Return an alist ((NAME . VALUE) (arg1 . value1) (arg2 . value2) ...)
+or nil on error."
+  (let (name value args error)
+    (dolist (arg (http-cookies-split-string string ?\;))
+      (if (string-match http-token-value-regexp arg)
+          (add-to-list 'args (cons (match-string 1 arg)
+                                   (match-string 2 arg)))
+        (setq error t)
+        (message "Cannot parse cookie %s" str)))
+    (unless error
+      args)))
 
 (defun http-cookies-set (host headers)
-  ;; The server may send several "Set-Cookie:" headers. So we have to iterate
-  ;; over the whole list.
-  (let (cookies)
-    (dolist (line headers)
-      ;; the headers names are downcase
-      (when (equal (car line) "set-cookie")
-        (let ((header-value (http-cookies-ns-to-rfc (cdr line))))
-        (message header-value)
+  ;; The server may send several "Set-Cookie:" headers.
+  (dolist (line headers)
+    (when (equal (car line) "set-cookie")
+      (let ((header-value (http-cookies-ns-to-rfc (cdr line))))
         ;; there may be several cookies separated by ","
         (dolist (cookie (http-cookies-split-string header-value ?\,))
-          (http-cookies-parse-cookie cookie)))))))
+          (http-cookies-parse-cookie cookie))))))
+
+
+
+;; functions to check the cookie (implementation of 4.3.2 of RFC 2109)
+
+(defun http-cookie-check-path (host url cookie)
+  "Return nil if the path attribute is not a prefix of th URL."
+  )
 
 (provide 'http-cookies)
 
