@@ -6,7 +6,7 @@
 ;; Package: simple-wiki-completion
 ;; Author: D. Goel <deego@glue.umd.edu>
 ;; Maintainer: David Hansen <david.hansen@physik.fu-berlin.de>
-;; Keywords:
+;; Keywords: hypermedia
 ;; Version: 1.0.12
 ;; Author's homepage: http://gnufans.net/~deego
 ;; For latest version:

@@ -34,6 +34,9 @@
 
 ;;; Change log:
 
+;; 1.0.15
+;;   - made parse headers RFC 2616 compatible (removing whitespaces, headers
+;;     may spawn several line)
 ;; 1.0.14
 ;;   - Removed attempt to fix bug in 1.0.12, not needed anymore since 1.0.13.
 ;; 1.0.13
@@ -240,12 +243,15 @@ Parse the status line, headers and chunk."
 (defun http-parse-headers (header-string)
   "Parse the header string.
 Argument HEADER-STRING A string containing a header list."
+  ;; headers may spawn several line if the nth, n>1, line starts with
+  ;; at least one whitespace
+  (setq header-string (replace-regexp-in-string "\r\n[ \t]+" " " header-string))
   (let ((lines-list (split-string header-string "\r\n")))
     (mapcar (lambda (line)
-	      (if (string-match ": " line)
-		  (cons (downcase (substring line 0 (match-beginning 0)))
-			(substring line (match-end 0)))
-		line))
+	      (if (string-match ":[ \t]+\\(.*?\\)[ \t]*$" line)
+                  (cons (downcase (substring line 0 (match-beginning 0)))
+                        (match-string 1 line)))
+		line)
 	    lines-list)))
 
 
@@ -339,7 +345,7 @@ use `decode-coding-region' and get the coding system to use from
   (interactive "sURL: ")
   (setq version (or version 1.0))
   (let* (host dir file port proc buf command start-line (message-headers "") )
-    (unless (string-match 
+    (unless (string-match
 	     "http://\\([^/:]+\\)\\(:\\([0-9]+\\)\\)?/\\(.*/\\)?\\([^:]*\\)"
              url)
       (error "Cannot parse URL %s" url))
