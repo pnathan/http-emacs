@@ -170,6 +170,11 @@ pressing C-c C-m during edits."
 
   (simple-wiki-edit-mode))
 
+
+(defcustom simple-wiki-fill-column nil
+  "If set to a number, this number will become the default fill-column
+when editing wikis. ")
+
 ;;;###autoload
 (defun simple-wiki-edit (url &optional save-func bufname
                              http-version content-type additional-headers)
@@ -188,11 +193,17 @@ Optional SAVE-FUNC is a function to use when saving."
       ;; page (OK, very unlikely but not impossible).  These (and
       ;; setting the globals again in the sentinel) looks a bit
       ;; fishy but i don't have a better idea.
+      
       (set (make-local-variable 'simple-wiki-url) url)
       (set (make-local-variable 'simple-wiki-time) (current-time))
       (set (make-local-variable 'simple-wiki-http-version) http-version)
       (set (make-local-variable 'simple-wiki-content-type) content-type)
-      (set (make-local-variable 'simple-wiki-save-function) save-func))))
+      (set (make-local-variable 'simple-wiki-save-function)
+	   save-func))))
+
+
+
+
 
 (defun simple-wiki-link-at-point ()
   "Return the wiki link at point or nil if there is none."
