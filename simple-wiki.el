@@ -4,7 +4,7 @@
 
 ;; Author: Alex Schroeder <alex@gnu.org>
 ;;         David Hansen <david.hansen@physik.fu-berlin.de>
-;; Maintainer: Pierre Gaston <pierre@gaston-karlaouzou.com>
+;; Maintainer: David Hansen <david.hansen@physik.fu-berlin.de>
 ;; Version: 1.0.5
 ;; Keywords: hypermedia
 ;; URL: http://www.emacswiki.org/cgi-bin/wiki.pl?SimpleWikiEditMode
@@ -320,6 +320,8 @@
    '(simple-wiki-match-bold . (0 'simple-wiki-bold-face prepend))
    '(simple-wiki-match-underline . (0 'simple-wiki-underline-face prepend))
    '(simple-wiki-match-teletype . (0 'simple-wiki-teletype-face prepend))
+   '(simple-wiki-match-emph . (0 'simple-wiki-emph-face prepend))
+   '(simple-wiki-match-strong . (0 'simple-wiki-strong-face prepend))
 
    ;; code blocks
    ;; highlight of <code> and <pre> needs some more sophisticated stuff :(
@@ -415,6 +417,12 @@
 
 (defun simple-wiki-match-pre (limit)
   (simple-wiki-match-tag "pre" limit))
+
+(defun simple-wiki-match-emph (limit)
+  (simple-wiki-match-tag "em" limit))
+
+(defun simple-wiki-match-strong (limit)
+  (simple-wiki-match-tag "strong" limit))
 
 (defun simple-wiki-check-in-code-block ()
   "Set the variable `simple-wiki-in-code-block'.
