@@ -33,6 +33,9 @@
 
 ;;; Change log:
 
+;; 1.0.13
+;;   - The string is now not anymore decoded in the http-filter.
+;;     You have to run `http-decode' yourself.
 ;; 1.0.12
 ;;   - Hopefully fixed the bug with inserting "half" multi byte chars.
 ;; 1.0.11
@@ -58,7 +61,7 @@
 
 (require 'hexl)
 
-(defvar http-get-version "1.0.11")
+(defvar http-get-version "1.0.13")
 
 ;; Proxy
 (defvar http-proxy-host nil
@@ -82,9 +85,7 @@ inserted, modify the variable `string' which is dynamically bound to
 what will get inserted in the end.  The string will be inserted at
 the `process-mark', which you can get by calling \(process-mark proc).
 `proc' is dynamically bound to the process, and the current buffer
-is the very buffer where the string will be inserted.  Note that if
-you use http/1.1 you probably want to leave  `http-1-1-parser'
-as the first hook as it remove headers and unchunk the file you request")
+is the very buffer where the string will be inserted.")
 
 (defvar http-filter-post-insert-hook  nil
   "Hook run by the `http-filter'.
@@ -100,7 +101,7 @@ to leave point at the right place, eg.  by wrapping your code in a
 See `http-filter-pre-insert-hook' and `http-filter-post-insert-hook'
 for places where you can do your own stuff such as HTML rendering.
 Argument PROC the proccess that is filtered.
-Argument STRING The string outputed bythe process."
+Argument STRING The string outputed byte process."
   ;; emacs seems to screw this sometimes
   (setq string (string-make-unibyte string))
   (with-current-buffer (process-buffer proc)
@@ -113,7 +114,9 @@ Argument STRING The string outputed bythe process."
         ;; the http-parser should now take care that the string contains
         ;; only full chunks
         ;; FIXME: i doubt this is enough.
-        (insert (decode-coding-string string http-coding))
+        ;; (insert (decode-coding-string string http-coding))
+        ;; (insert (decode-coding-string string 'binary))
+        (insert string)
 	(run-hooks 'http-filter-post-insert-hook)
 	(set-marker (process-mark proc) (point)))
       (if moving (goto-char (process-mark proc))))))
@@ -162,6 +165,7 @@ Parse the status line, headers and chunk"
 	(make-local-variable 'http-parser-state)
 	(make-local-variable 'http-not-yet-parsed)
 	(make-local-variable 'http-unchunk-chunk-size)
+        (make-local-variable 'http-coding)
 	;; parsing status line
 	(if (string-match "HTTP/[0-9.]+ \\([0-9]+\\) \\(.*\\)\r\n"
                           parsed-string)
@@ -270,6 +274,13 @@ Argument HEADER-STRING A string containing a header list."
 		     (format "%%%02x" c)))
 		 (encode-coding-string str content-type))))
 
+
+(defun http-decode-buffer ()
+  "Decode buffer according to the buffer local variable `http-coding'."
+  (when (multibyte-string-p (decode-coding-string "test" http-coding))
+    (set-buffer-multibyte t))
+  (decode-coding-region (point-min) (point-max) http-coding))
+
 ;; Debugging
 (defvar http-log-function 'ignore
   "Function to call for log messages.")
@@ -300,7 +311,7 @@ The default value just ignores STR."
 ;; The main function
 
 ;;;###autoload
-(defun http-get (url &optional headers sentinel version bufname content-type )
+(defun http-get (url &optional headers sentinel version bufname content-type)
   "Get URL in a buffer, and return the process.
 You can get the buffer associated with this process using
 `process-buffer'.
@@ -385,6 +396,9 @@ use `decode-coding-region' and get the coding system to use from
     (http-log (format "Connecting to %s %d\nCommand:\n%s\n" host port command))
     (set-process-sentinel proc (or sentinel 'ignore))
     (set-process-coding-system proc 'binary 'binary) ; we need \r\n
+    ;; we need this to be able to correctly decode the buffer with
+    ;; decode-coding-region later
+    (with-current-buffer buf (set-buffer-multibyte nil))
     (set-process-filter proc 'http-filter)
     (set-marker (process-mark proc) (point-max))
     (process-send-string proc command)

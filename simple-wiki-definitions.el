@@ -7,7 +7,7 @@
 ;; Maintainer: Pierre Gaston <pierre@gaston-karlaouzou.com>
 
 ;; Keywords:
-;; Version: 1.0.6
+;; Version: 1.0.7
  
 ;; This file is NOT part of GNU Emacs.
  
@@ -26,8 +26,11 @@
 ;; Free Software Foundation, Inc., 59 Temple Place - Suite 330,
 ;; Boston, MA 02111-1307, USA.
 
-;;; ChangeLog:
+;;; Change Log:
 
+;;  1.0.7
+;;   - Added call to `http-decode-buffer' to the http-get sentinel as the
+;;     http-filter inserts the string now as binary.
 ;;  1.0.6
 ;;    - `simple-wiki-edit-mode' when saving a usemod wiki is now called
 ;;      in a http-post process sentinel
@@ -99,6 +102,7 @@ the eighth the encoding")
 (defun swd-usemod-wiki-save-sentinel (proc message)
   "Sentinel for the http-post-process."
   (switch-to-buffer (process-buffer proc))
+  (http-decode-buffer)
   ;; Same trick as in `simple-wiki-edit-sentinel'.  See comment there.
   (setq-default simple-wiki-url simple-wiki-url)
   (setq-default simple-wiki-time simple-wiki-time)

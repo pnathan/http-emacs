@@ -4,7 +4,7 @@
 
 ;; Author: Alex Schroeder <alex@gnu.org>
 ;; Maintainer: Pierre Gaston <pierre@gaston-karlaouzou.com>
-;; Version: 1.0.11
+;; Version: 1.0.13
 ;; Keywords: hypermedia
 ;; URL: http://www.emacswiki.org/cgi-bin/wiki.pl?SimpleWikiEditMode
 
@@ -43,8 +43,13 @@
 ;; dabbrev-completion
 ;; Consider also (setq pcomplete-ignore-case t)
 
-;;; ChaneLog:
+;;; Change Log:
 
+;; 1.0.13
+;;   - Added call to `http-decode' to the http-get sentinel as the http-filter
+;;     inserts the string now as binary.
+;; 1.0.12
+;;   - removed `simple-wiki-delayed-longlines-mode-on'
 ;; 1.0.11
 ;;   - Added support for free links
 ;; 1.0.10
@@ -89,7 +94,7 @@
 
 (defcustom simple-wiki-minor-p nil
   "Whether to label changes as minor.  This can be changed by
-pressing C-c C-t during edits."
+pressing C-c C-m during edits."
   :group 'simple-wiki)
 
 (make-variable-buffer-local 'simple-wiki-minor-p)
@@ -164,6 +169,7 @@ pressing C-c C-t during edits."
   "Sentinel for the http-get process."
 
   (switch-to-buffer (process-buffer proc))
+  (http-decode-buffer)
   ;; local variables get destroyed when running
   ;; `simple-siki-edit-mode'.  Setting the globals
   ;; works around this problem.
@@ -274,18 +280,6 @@ to the first \"?\"."
     (error "No save function specified"))
   (save-excursion
     (funcall simple-wiki-save-function)))
-
-;; remove this
-(defun simple-wiki-delayed-longlines-mode-on ()
-  "Braindead and obsolete function.
-Use (add-hook 'simple-wiki-edit-mode-hook 'longlines-mode-on) instead."
-  (require 'longlines)
-  (let ((buf (current-buffer)))
-    (run-with-idle-timer 1 nil
-			 (lambda ()
-			   (save-excursion
-			     (set-buffer buf)
-			     (longlines-mode-on))))))
 
 (defun pcomplete-simple-wiki-setup ()
   (set (make-local-variable 'pcomplete-parse-arguments-function)

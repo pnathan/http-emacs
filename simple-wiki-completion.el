@@ -7,19 +7,19 @@
 ;; Author: D. Goel <deego@glue.umd.edu>
 ;; Maintainer: Pierre Gaston <pierre@gaston-karlaouzou.com>
 ;; Keywords:
-;; Version: 1.0.11
+;; Version: 1.0.12
 ;; Author's homepage: http://gnufans.net/~deego
 ;; For latest version:
 (defconst simple-wiki-completion-home-page
   "http://savannah.nongnu.org/projects/http-emacs/")
 
-;; This file is NOT (yet) part of GNU Emacs.
- 
+;; This file is not part of GNU Emacs.
+
 ;; This is free software; you can redistribute it and/or modify
 ;; it under the terms of the GNU General Public License as published by
 ;; the Free Software Foundation; either version 2, or (at your option)
 ;; any later version.
- 
+
 ;; This is distributed in the hope that it will be useful,
 ;; but WITHOUT ANY WARRANTY; without even the implied warranty of
 ;; MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
@@ -34,8 +34,11 @@
 ;; like M-x swc-emacswiki-browse.
 
 
-;;; ChangeLog:
+;;; Change log:
 
+;; 1.0.12
+;;   - Added call to `http-decode-buffer' to `swc-pages-get-http-get' as the
+;;     http-filter inserts the string now as binary.
 ;; 1.0.11
 ;;   - Removed `swc-follow' as it doesn't extend `simple-wiki-follow'
 ;; 1.0.10
@@ -65,7 +68,7 @@
 (require 'simple-wiki-edit)
 (require 'simple-wiki)
 
-(defvar simple-wiki-completion-version "1.0.10")
+(defvar simple-wiki-completion-version "1.0.12")
 
 (defvar swc-completions nil)
 
@@ -78,12 +81,12 @@
 Is a list of the form 
  ((code1 ((pg1) (pg2) (pg3...))  (code2 .....)) ")
 
-;; redefine the open function to take advantage of completions
+;; Redefine the open function to take advantage of completions
 (define-key simple-wiki-edit-mode-map (kbd "C-c C-o") 'swc-open)
 
-;; hooks for renaming the buffers  and setting current wiki nickname
+;; Hooks for renaming the buffers  and setting current wiki nickname
 (add-hook 'simple-wiki-edit-mode-hook 'rename-hook)
-              
+
 (defun rename-hook ()
   (when simple-wiki-url
     (let ((bufname  (concat (upcase (swd-nick simple-wiki-url))
@@ -98,14 +101,14 @@ Is a list of the form
   (setq swc-pages nil))
 
 (defun swc-completions-make (nick)
-  "retrieve the index page associated with nick and build the completion list"
-  ;remove existing completions
+  "Retrieve the index page associated with nick and build the completion list."
+  ;; remove existing completions
   (let ((tail swc-pages))
     (while tail
       (if (equal (car (car tail)) nick)
 	  (setq swc-pages (delq (car tail) swc-pages)))
       (setq tail (cdr tail))))
-  ;look for index page associated with nick
+  ;; look for index page associated with nick
   (let ((refpage (concat (swd-base-url nick) (swd-index-parameters
 					      nick)))
 	pages pageslist)
@@ -143,8 +146,9 @@ Is a list of the form
        (sleep-for 1)
        (setq progress (1- progress) ))
     ;; parse the entries
+    (http-decode-buffer)
     (setq pages 
-	  (split-string 
+	  (split-string
 	   (buffer-string)))
        ;; get rid of the buffer
     (kill-buffer (process-buffer proc))
