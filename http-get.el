@@ -279,7 +279,9 @@ Argument HEADER-STRING A string containing a header list."
 
 (defun http-decode-buffer ()
   "Decode buffer according to the buffer local variable `http-coding'."
-  (when (fboundp 'set-buffer-multibyte)
+  (when (and
+	 (fboundp 'set-buffer-multibyte)
+	 (fboundp 'multibyte-string-p))
     (when (multibyte-string-p (decode-coding-string "test" http-coding))
       (set-buffer-multibyte t)))
   (decode-coding-region (point-min) (point-max) http-coding))
