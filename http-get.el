@@ -73,7 +73,7 @@
 (defvar http-proxy-port nil
   "*Port number of proxy server.  Default is 80.")
 
-;; Coding sytem
+;; Coding system
 (defvar http-coding 'iso-8859-1
    "Default coding to be use when the string is inserted in the buffer.
 This coding will be modified on Finding the content-type header")
@@ -102,8 +102,8 @@ to leave point at the right place, eg.  by wrapping your code in a
   "Filter function for HTTP buffers.
 See `http-filter-pre-insert-hook' and `http-filter-post-insert-hook'
 for places where you can do your own stuff such as HTML rendering.
-Argument PROC the proccess that is filtered.
-Argument STRING The string outputed byte process."
+Argument PROC is the process that is filtered.
+Argument STRING is the string outputted by the process."
   ;; emacs seems to screw this sometimes
   (when (fboundp 'string-make-unibyte)
     (setq string (string-make-unibyte string)))
