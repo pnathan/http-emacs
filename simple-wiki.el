@@ -51,13 +51,12 @@
 ;; in pre emacs 21 or xemacs.
 ;; "\\<[A-Z\xc0-\xde]+[a-z\xdf-\xff]+\\([A-Z\xc0-\xde]+[a-z\xdf-\xff]*\\)+\\>"
 
-;; maybe still buggy, oddmuse syntax is weird
 (defconst simple-wiki-link-pattern
   "\\<\\([A-Z]+?[[:lower:][:nonascii:]]+?[A-Z][[:lower:][:upper:]]*\\)"
   "The pattern used for finding camel case links.")
 
 (defconst simple-wiki-free-link-pattern
-  "\\[\\[\\([^\n]+\\)\\]\\]"
+  "\\[\\[\\([^\n]+?\\)\\]\\]"
   "The Pattern used for finding free links.")
 
 ;; custom groups
@@ -131,9 +130,9 @@
 
 (defface simple-wiki-local-link-face
   '((((class color) (background dark))
-     (:foreground "sky blue" :weight bold))
+     (:foreground "skyblue3" :weight bold))
     (((class color) (background light))
-     (:foreground "royal blue" :weigth bold)))
+     (:foreground "royal blue" :weight bold)))
   "Face for links to pages on the same wiki."
   :group 'simple-wiki-faces)
 
@@ -147,6 +146,14 @@
   '((((class color) (background dark)) (:background "grey15"))
     (((class color) (background light)) (:background "moccasin")))
   "Face for code in Wiki pages."
+  :group 'simple-wiki-faces)
+
+(defface simple-wiki-nowiki-face
+  '((((class color) (background dark))
+     (:foreground "LightGoldenRod2"))
+    (((class color) (background light))
+     (:foreground "DarkGoldenRod2")))
+  "Face for links to pages on the same wiki."
   :group 'simple-wiki-faces)
 
 (defconst simple-wiki-font-lock-keywords
@@ -181,8 +188,9 @@
    '(simple-wiki-match-strong-classic . 'simple-wiki-strong-face)
 
    ;; local links (must be in one line)
-   (cons simple-wiki-free-link-pattern '(1 'simple-wiki-local-link-face))
-   (cons simple-wiki-link-pattern ''simple-wiki-local-link-face)
+   (cons simple-wiki-free-link-pattern
+         '(1 'simple-wiki-local-link-face prepend))
+   (cons simple-wiki-link-pattern '(0 'simple-wiki-local-link-face prepend))
 
    ;; misc tags
    '("<i>"
@@ -197,16 +205,20 @@
    '("<tt>"
      (simple-wiki-match-teletype (simple-wiki-end-of-tag "tt") nil
                                  (0 'simple-wiki-teletype-face prepend)))
-
    ;; code blocks
    '("<code>"
      (simple-wiki-match-code-tag (simple-wiki-end-of-tag "code") nil
                                  (0 'simple-wiki-code-face t)))
-   '("<pre>"
+   '("<pre>\\($\\|.\\)"
      (simple-wiki-match-pre (simple-wiki-end-of-tag "pre") nil
                             (0 'simple-wiki-code-face t)))
    '("^[\t ]" (simple-wiki-match-code (simple-wiki-check-in-code-block) nil
-                                      (0 'simple-wiki-code-face t)))))
+                                      (0 'simple-wiki-code-face t)))
+   ;; should be the last
+   '("<nowiki>"
+     (simple-wiki-match-nowiki (simple-wiki-end-of-tag "nowiki") nil
+                               (0 'simple-wiki-nowiki-face t)))))
+
 
 (define-derived-mode simple-wiki-mode text-mode "Wiki"
   "Simple mode to edit wiki pages.
@@ -258,6 +270,9 @@
 
 (defun simple-wiki-match-code-tag (limit)
   (simple-wiki-match-tag "code" limit))
+
+(defun simple-wiki-match-nowiki (limit)
+  (simple-wiki-match-tag "nowiki" limit))
 
 (defun simple-wiki-match-emph (limit)
   (simple-wiki-match-tag "em" limit))

@@ -5,7 +5,7 @@
 ;; Author: Alex Schroeder <alex@gnu.org>
 ;;         Pierre Gaston <pierre@gaston-karlaouzou.com>
 ;; Maintainer: Pierre Gaston <pierre@gaston-karlaouzou.com>
-;; Version: 1.0.9
+;; Version: 1.0.11
 ;; Keywords: hypermedia
 ;; URL: http://www.emacswiki.org/cgi-bin/wiki.pl?HttpGet
 
@@ -52,7 +52,7 @@
 
 (require 'hexl)
 
-(defvar http-get-version "1.0.10")
+(defvar http-get-version "1.0.11")
 
 ;; Proxy
 (defvar http-proxy-host nil
@@ -95,6 +95,7 @@ See `http-filter-pre-insert-hook' and `http-filter-post-insert-hook'
 for places where you can do your own stuff such as HTML rendering.
 Argument PROC the proccess that is filtered.
 Argument STRING The string outputed bythe process."
+  (setq string (string-make-unibyte string))
   (with-current-buffer (process-buffer proc)
     (let ((moving (= (point) (process-mark proc))))
       (save-excursion
@@ -127,7 +128,7 @@ This is set by the function `http-headers'.")
 
 (defvar http-unchunk-chunk-size  0
   "Size of the current unfinished chunk.")
-(make-local-variable 'http-unchunk-size)
+(make-local-variable 'http-unchunk-chunk-size)
 
 (defvar http-not-yet-parsed  ""
   "Received bytes that have not yet been parsed.")
@@ -144,7 +145,8 @@ Parse the status line, headers and chunk"
   (let ((parsed-string (concat http-not-yet-parsed string)) content-type)
     (setq string "")
     (setq http-not-yet-parsed "")
-    (while (> (string-bytes parsed-string) 0)
+    ;; (while (> (string-bytes parsed-string) 0)
+    (while (> (length parsed-string) 0)
       (cond
 
        ((eq http-parser-state 'status-line)
@@ -152,7 +154,7 @@ Parse the status line, headers and chunk"
 	;; we should do this because of various kill-all-local-variable
 	(make-local-variable 'http-parser-state)
 	(make-local-variable 'http-not-yet-parsed)
-	(make-local-variable 'http-unchunk-size)
+	(make-local-variable 'http-unchunk-chunk-size)
 	;; parsing status line
 	(if (string-match "HTTP/[0-9.]+ \\([0-9]+\\) \\(.*\\)\r\n"
                           parsed-string)
@@ -191,7 +193,8 @@ Parse the status line, headers and chunk"
 
        ((eq http-parser-state 'chunked)
 	;; parsing chunked content
-	(if (> (string-bytes parsed-string) http-unchunk-chunk-size)
+        ;; (if (> (string-bytes parsed-string) http-unchunk-chunk-size)
+        (if (> (length parsed-string) http-unchunk-chunk-size)
 	    (progn
 	      (setq string (concat string
                                    (substring parsed-string 0
@@ -217,7 +220,8 @@ Parse the status line, headers and chunk"
 	  ;; the current chunk is not finished yet
 	  (setq string  (concat string parsed-string))
 	  (setq http-unchunk-chunk-size
-                (- http-unchunk-chunk-size (string-bytes parsed-string)))
+                ;; (- http-unchunk-chunk-size (string-bytes parsed-string)))
+                (- http-unchunk-chunk-size (length parsed-string)))
 	  (setq parsed-string "")))
 
        ((eq http-parser-state 'trailer)
