@@ -89,7 +89,7 @@ closed when the entire document has been downloaded.
 If the optional argument VERBOSE is non-nil, a message will show the
 command sent to the server.
 
-The coding system of the process is set to `unix', because we need to
+The coding system of the process is set to `binary', because we need to
 distinguish between \\r and \\n.  To correctly decode the text later,
 use `decode-coding-region' and get the coding system to use from
 `http-headers'."
@@ -108,7 +108,7 @@ use `decode-coding-region' and get the coding system to use from
 	  proc (open-network-stream (concat "HTTP POST " url)
 				    buf (if http-proxy-host http-proxy-host host) (if http-proxy-port http-proxy-port port)))
     (set-process-sentinel proc 'ignore)
-    (set-process-coding-system proc 'unix); we need \r\n in the headers!
+    (set-process-coding-system proc 'binary); we need \r\n in the headers!
     (set-process-filter proc 'http-filter)
     (set-marker (process-mark proc) (point-min) buf)
     (if sentinel
