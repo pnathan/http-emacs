@@ -32,6 +32,7 @@
 ;;    - `simple-wiki-edit-mode' when saving a usemod wiki is now called
 ;;      in a http-post process sentinel
 ;;    - Added "Connection: close" header for HTTP/1.1 connections.
+;;    - Reload pages after saving.
 ;;  1.0.5
 ;;    - Fixed infinite loop bug in swd-nick
 
@@ -104,7 +105,15 @@ the eighth the encoding")
   (setq-default simple-wiki-url simple-wiki-url)
   (setq-default simple-wiki-time simple-wiki-time)
   (setq-default simple-wiki-save-function simple-wiki-save-function)
-  (simple-wiki-edit-mode))
+  (setq-default simple-wiki-http-version simple-wiki-http-version)
+  (setq-default simple-wiki-content-type simple-wiki-content-type)
+
+  (simple-wiki-edit-mode)
+  ;; oddmuse returns a page with one line.  Saving this page would
+  ;; destroy the edited page.  To prevent users can do this reload
+  ;; the page.
+  (simple-wiki-edit simple-wiki-url simple-wiki-save-function nil
+                    simple-wiki-http-version simple-wiki-content-type))
 
 (defun swd-usemod-wiki-save ()
   "Save the current page to a UseMod wiki."
@@ -112,29 +121,30 @@ the eighth the encoding")
         (save-func simple-wiki-save-function)
         (link (simple-wiki-save-link))
         (http-version (swd-http-version (swd-nick simple-wiki-url)))
+        (content-type (swd-http-coding (swd-nick simple-wiki-url)))
         (headers) (proc))
     (when (and http-version (= http-version 1.1))
       (setq headers '(("Connection" . "close"))))
     (setq proc (http-post
                 link
                 (list (cons "title" (simple-wiki-page))
-                      (cons "summary" 
-                            (setq swc-summary-default
-                                  (read-from-minibuffer "Summary: " "*")))
+                      (cons "summary" (read-from-minibuffer "Summary: " ""))
                       '("raw" . "2")
                       (cons "username"
                             (or swd-user-name
                                 (apply 'concat (split-string user-full-name))))
                       (cons "text" (buffer-string))
                       (cons "recent_edit" (simple-wiki-minor-value)))
-                (swd-http-coding (swd-nick url))
+                content-type
                 headers
                 'swd-usemod-wiki-save-sentinel
                 http-version))
     (with-current-buffer (process-buffer proc)
       (set (make-local-variable 'simple-wiki-url) url)
       (set (make-local-variable 'simple-wiki-save-function) save-func)
-      (set (make-local-variable 'simple-wiki-time) nil))))
+      (set (make-local-variable 'simple-wiki-time) nil)
+      (set (make-local-variable 'simple-wiki-content-type) content-type)
+      (set (make-local-variable 'simple-wiki-http-version) http-version))))
 
 
 ;; various utility function

@@ -96,22 +96,22 @@
   '(("^\\([0-9]+\\)[ \t]+\\(#.+?\\)\n"
      (1 'font-lock-constant-face)
      (2 'font-lock-warning-face))       ; the time stamp and warning at the top
-    ("[^=]=\\([^\n=]+\\)=[^=]"
 
-     ;; headings
+    ;; headings
+    ("^=\\([^\n=]+\\)=[^=]"
      (1 'simple-wiki-heading-1-face))
-    ("[^=]=\\{2\\}\\([^\n=]+\\)=\\{2\\}[^=]"
+    ("^=\\{2\\}\\([^\n=]+\\)=\\{2\\}[^=]"
      (1 'simple-wiki-heading-2-face))
-    ("[^=]=\\{3\\}\\([^\n=]+\\)=\\{3\\}[^=]"
+    ("^=\\{3\\}\\([^\n=]+\\)=\\{3\\}[^=]"
      (1 'simple-wiki-heading-3-face))
-    ("[^=]=\\{4\\}\\([^\n=]+\\)=\\{4\\}[^=]"
+    ("^=\\{4\\}\\([^\n=]+\\)=\\{4\\}[^=]"
      (1 'simple-wiki-heading-4-face))
-    ("[^=]=\\{5\\}\\([^\n=]+\\)=\\{5\\}[^=]"
+    ("^=\\{5\\}\\([^\n=]+\\)=\\{5\\}[^=]"
      (1 'simple-wiki-heading-5-face))
-    ("[^=]=\\{6\\}\\([^\n=]+\\)=\\{6\\}[^=]"
+    ("^=\\{6\\}\\([^\n=]+\\)=\\{6\\}[^=]"
      (1 'simple-wiki-heading-6-face))
 
-    ("^ .+?$" . 'simple-wiki-code-face)                    ; code
+    ("^[\t ].+?$" . 'simple-wiki-code-face)                ; code
     ("<\\(/?[a-z]+\\)" (1 font-lock-function-name-face))   ; tags
     ("^[*#]\\([*#]+\\)" . 'font-lock-constant-face)        ; enums
     ("^\\([*#]\\)[^*#]" 1 font-lock-builtin-face)))        ; enums

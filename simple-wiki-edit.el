@@ -36,7 +36,7 @@
 ;; (add-hook 'simple-wiki-edit-mode-hook 'turn-off-auto-fill)
 ;; (add-hook 'simple-wiki-edit-mode-hook 'longlines-mode-on)
 ;; (add-hook 'simple-wiki-save-before-hooks 'longlines-mode-off)
-;; in which case, also customize simple-wiki-fill-column back to 70
+
 ;; using pcomplete within the page:
 ;;  (add-hook 'simple-wiki-edit-mode-hooks  'pcomplete-simple-wiki-setup)
 ;; and thereafter, use  C-/ to pcomplete pages at point and M-/ for
@@ -50,6 +50,8 @@
 ;;   - `simple-wiki-edit-mode' now is called when the http-get process
 ;;     finished.  There is no need for `simple-wiki-delayed-longlines-mode-on'
 ;;     anymore.  Call `longlines-mode-on' in `simple-wiki-edit-mode-hook'.
+;;   - Removed `simple-wiki-fill-columns'
+;;   - Moved custom variables to group simple-wiki.
 ;; 1.0.8
 ;;   - Removed all referenced to simple-wiki-edit-mode-hooks and replaced
 ;;     them with simple-wiki-edit-mode-hook.
@@ -75,19 +77,25 @@
 (defvar simple-wiki-save-function nil
   "The function to use to save the current buffer.")
 
+(defvar simple-wiki-http-version nil
+  "The HTTP version of the WiKi of the current buffer.")
+
+(defvar simple-wiki-content-type nil
+  "The content type of the WiKi of the current buffer.")
+
 (defcustom simple-wiki-minor-p nil
   "Whether to label changes as minor.  This can be changed by
-pressing C-c C-t during edits.")
-
-(defcustom simple-wiki-fill-column 70
-  "Do we need this?")
+pressing C-c C-t during edits."
+  :group 'simple-wiki)
 
 (make-variable-buffer-local 'simple-wiki-minor-p)
 
 (defcustom simple-wiki-edit-mode-hook nil
-  "Hook run when entering Wiki-Edit mode.")
+  "Hook run when entering Wiki-Edit mode."
+  :group 'simple-wiki)
 
-(defcustom simple-wiki-save-before-hooks nil "")
+(defcustom simple-wiki-save-before-hooks nil ""
+  :group 'simple-wiki)
 
 (defun simple-wiki-minor-value ()
   (if simple-wiki-minor-p "on" "off"))
@@ -156,6 +164,9 @@ pressing C-c C-t during edits.")
   (setq-default simple-wiki-url simple-wiki-url)
   (setq-default simple-wiki-time simple-wiki-time)
   (setq-default simple-wiki-save-function simple-wiki-save-function)
+  (setq-default simple-wiki-http-version simple-wiki-http-version)
+  (setq-default simple-wiki-content-type simple-wiki-content-type)
+
   (simple-wiki-edit-mode))
 
 ;;;###autoload
@@ -173,6 +184,8 @@ Optional SAVE-FUNC is a function to use when saving."
     (with-current-buffer (process-buffer proc)
       (set (make-local-variable 'simple-wiki-url) url)
       (set (make-local-variable 'simple-wiki-time) (current-time))
+      (set (make-local-variable 'simple-wiki-http-version) http-version)
+      (set (make-local-variable 'simple-wiki-content-type) content-type)
       (set (make-local-variable 'simple-wiki-save-function) save-func))))
 
 (defun simple-wiki-follow ()

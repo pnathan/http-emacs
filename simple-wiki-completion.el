@@ -7,7 +7,7 @@
 ;; Author: D. Goel <deego@glue.umd.edu>
 ;; Maintainer: Pierre Gaston <pierre@gaston-karlaouzou.com>
 ;; Keywords:
-;; Version: 1.0.9
+;; Version: 1.0.10
 ;; Author's homepage: http://gnufans.net/~deego
 ;; For latest version:
 (defconst simple-wiki-completion-home-page
@@ -38,6 +38,8 @@
 
 ;; 1.0.10
 ;;   - Added "Connection: close" header to http-get call for HTTP/1.1.
+;;   - Moved custom variable to group simple-wiki
+;;   - Removed swc-summary-default
 ;; 1.0.9
 ;;   - Fixed bugs and the look of http-get version of building completion.
 ;; 1.0.8
@@ -73,7 +75,8 @@
 (defvar swc-completions nil)
 
 (defcustom simple-wiki-completion-ignore-case t
-  "" )
+  ""
+  :group 'simple-wiki)
 
 (defvar swc-pages nil
   "Not to be confused with `swc-pages-completion'.
@@ -120,9 +123,10 @@ Is a list of the form
       (setq pageslist
 	    (mapcar (lambda (arg) (list arg)) pages))
       (push (list nick pageslist) swc-pages))))
-  
+
 (defcustom swc-pages-get-function 'swc-pages-get-http-get
-  "try swc-pages-get-w3m if you prefer w3m.")
+  "try swc-pages-get-w3m if you prefer w3m."
+  :group 'simple-wiki)
 
 (defun swc-pages-get-http-get (refpage &optional http-version)
   (let (proc pages headers (progress 60)
@@ -131,8 +135,8 @@ Is a list of the form
       (setq headers '(("Connection" . "close"))))
     (setq proc (http-get refpage headers
                          (lambda (proc message) nil) (swd-http-version nick)))
-    ;; wait for the process to end
-    ;; or wait  60 seconds
+    ;; wait for the process to end or wait  60 seconds
+    ;; what happens if the process isn't ready after 60s?
     (while (and (eq (process-status proc) 'open)  (> progress 0))
       (setq progress-bar (concat progress-bar "."))
       (cond ((fboundp 'display-message)
@@ -170,11 +174,11 @@ completion list"
 
 (defvar swc-savefn-current nil)
 
-(defvar swc-tmp-pages nil "temporary variable. ")
+(defvar swc-tmp-pages nil "Temporary variable.")
 
 (defvar swc-pages-completion nil
   "Within each buffer, this variable shall be bound to a list of all
-pages, so dynamic completion works while editing. 
+pages, so dynamic completion works while editing.
 Not to be confused with `swc-pages'")
 
 (make-variable-buffer-local 'swc-pages-completion)
@@ -248,9 +252,6 @@ Not to be confused with `swc-pages'")
 (defun swc-pierre-browse  ()
   (interactive)
     (swc-browse "pierre"))
-
-(defcustom swc-summary-default "*"
-  "")
 
 (provide 'simple-wiki-completion)
 (run-hooks 'simple-wiki-completion-after-load-hooks)
