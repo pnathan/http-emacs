@@ -5,7 +5,7 @@
 ;; Author: Alex Schroeder <alex@gnu.org>
 ;;         Pierre Gaston <pierre@gaston-karlaouzou.com>
 ;; Maintainer: Pierre Gaston <pierre@gaston-karlaouzou.com>
-;; Version: 1.0.11
+;; Version: 1.0.12
 ;; Keywords: hypermedia
 ;; URL: http://www.emacswiki.org/cgi-bin/wiki.pl?HttpGet
 
@@ -33,6 +33,8 @@
 
 ;;; Change log:
 
+;; 1.0.12
+;;   - Hopefully fixed the bug with inserting "half" multi byte chars.
 ;; 1.0.11
 ;;   - Added (setq string (string-make-unibyte string)) to http-filter
 ;;     this seems to solve problems with multi byte chars.
@@ -108,7 +110,8 @@ Argument STRING The string outputed bythe process."
 	(goto-char (process-mark proc))
 	(run-hooks 'http-filter-pre-insert-hook)
         ;; it may be a problem if we only got a 'half' multi byte char
-        ;; FIXME: its definitively is a problem!
+        ;; the http-parser should now take care that the string contains
+        ;; only full chunks (is this enough?)
         (insert (decode-coding-string string http-coding))
 	(run-hooks 'http-filter-post-insert-hook)
 	(set-marker (process-mark proc) (point)))
@@ -221,12 +224,17 @@ Parse the status line, headers and chunk"
 		(setq http-not-yet-parsed parsed-string)
 		(setq parsed-string "")))
 	  ;; the current chunk is not finished yet
-	  (setq string  (concat string parsed-string))
-	  (setq http-unchunk-chunk-size
-                ;; (- http-unchunk-chunk-size (string-bytes parsed-string)))
-                (- http-unchunk-chunk-size (length parsed-string)))
+          ;;
+          ;; Don't insert the not finished chunk yet.  It may end with a
+          ;; half multi byte character.
+          ;;
+	  ;; (setq string  (concat string parsed-string))
+	  ;; (setq http-unchunk-chunk-size
+          ;;       ;; (- http-unchunk-chunk-size (string-bytes parsed-string)))
+          ;;       (- http-unchunk-chunk-size (length parsed-string)))
+          ;;
+          (setq http-not-yet-parsed parsed-string)
 	  (setq parsed-string "")))
-
 
        ((eq http-parser-state 'trailer)
 	;; parsing trailer
