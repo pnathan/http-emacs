@@ -1,5 +1,5 @@
 ;;; simple-wiki-completion.el ---
-;; Time-stamp: <2004-11-21 15:17:19 deego>
+;; Time-stamp: <2004-11-29 13:05:30 deego>
 ;; Copyright (C) 2003 D. Goel
 ;; Emacs Lisp Archive entry
 ;; Filename: simple-wiki-completion.el
@@ -183,7 +183,7 @@ completion list"
 pages, so dynamic completion works while editing.
 Not to be confused with `swc-pages'")
 
-(make-variable-buffer-local 'swc-pages-completion)
+;;(make-variable-buffer-local 'swc-pages-completion)
 
 ;; open redefined to take advantage of the completion
 (defun swc-open (&optional page)
