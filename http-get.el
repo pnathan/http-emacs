@@ -181,7 +181,7 @@ Parse the status line, headers and chunk"
 	      (setq string  (concat string (substring parsed-string 0 http-unchunk-chunk-size)))
 	      (setq parsed-string (substring parsed-string http-unchunk-chunk-size))
 	      (setq http-unchunk-chunk-size 0)
-	      (message (concat "chunk start:" (substring parsed-string 0 (if (< (string-bytes parsed-string) 10)  (string-bytes parsed-string) 10))))
+	      
 	      (if (string-match  "\\([0-9a-f]+\\)[^\r^\b]*\\(\r\n\\)" parsed-string )
 		  (if (> (setq http-unchunk-chunk-size (hexl-hex-string-to-integer (match-string 1 parsed-string)))
 			 0)
@@ -306,7 +306,7 @@ will be used for the server.  Possible values are `iso-8859-1' or
 `euc-jp' and others.
 
 
-The coding system of the process is set to `unix', because we need to
+The coding system of the process is set to `binary', because we need to
 distinguish between \\r and \\n.  To correctly decode the text later,
 use `decode-coding-region' and get the coding system to use from
 `http-headers'."
