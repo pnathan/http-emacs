@@ -157,7 +157,7 @@ pressing C-c C-m during edits."
   (interactive)
   (let ((case-fold-search nil))
     (re-search-forward
-     simple-wiki-link-pattern
+     (car simple-wiki-link-pattern)
      nil t)))
 
 (defun simple-wiki-prev ()
@@ -165,7 +165,7 @@ pressing C-c C-m during edits."
   (interactive)
   (let ((case-fold-search nil))
     (re-search-backward
-     simple-wiki-link-pattern
+     (car simple-wiki-link-pattern)
      nil t)))
 
 (defun simple-wiki-edit-sentinel (proc message)
@@ -215,7 +215,7 @@ Optional SAVE-FUNC is a function to use when saving."
   ;; first check for free links as they may contain camel case
   (let ((line (buffer-substring (point-at-bol) (point-at-eol)))
         (case-fold-search nil) str)
-    (when (string-match simple-wiki-free-link-pattern line)
+    (when (string-match (car simple-wiki-free-link-pattern) line)
       ;; there is a free link, is the cursor on it?
       (let ((pos-in-line (- (point) (point-at-bol))))
         (when (and (>=  pos-in-line (match-beginning 0))
@@ -225,7 +225,7 @@ Optional SAVE-FUNC is a function to use when saving."
                      "[ \t]" "_" (match-string 1 line))))))
     (unless str
       (let ((word (word-at-point)))
-        (when (string-match simple-wiki-link-pattern word)
+        (when (string-match (car simple-wiki-link-pattern) word)
           (setq str (match-string 1 word)))))
     str))
 
