@@ -83,32 +83,32 @@
 (if (featurep 'xemacs)
     (progn
       (defface simple-wiki-heading-1-face
-        '((t (:weight bold)))
+        '((t (:bold t)))
         "Face for WiKi headings at level 1."
         :group 'simple-wiki-faces)
 
       (defface simple-wiki-heading-2-face
-        '((t (:weight bold)))
+        '((t (:bold t)))
         "Face for WiKi headings at level 2."
         :group 'simple-wiki-faces)
 
       (defface simple-wiki-heading-3-face
-        '((t (:weight bold)))
+        '((t (:bold t)))
         "Face for WiKi headings at level 3."
         :group 'simple-wiki-faces)
 
       (defface simple-wiki-heading-4-face
-        '((t (:weight bold)))
+        '((t (:bold t)))
         "Face for WiKi headings at level 4."
         :group 'simple-wiki-faces)
 
       (defface simple-wiki-heading-5-face
-        '((t (:weight bold)))
+        '((t (:bold t)))
         "Face for WiKi headings at level 5."
         :group 'simple-wiki-faces)
 
       (defface simple-wiki-heading-6-face
-        '((t (:weight bold)))
+        '((t (:bold t)))
         "Face for WiKi headings at level 6."
         :group 'simple-wiki-faces))
 
