@@ -5,7 +5,7 @@
 ;; Author: Alex Schroeder <alex@gnu.org>
 ;;         Pierre Gaston <pierre@gaston-karlaouzou.com>
 ;; Maintainer: Pierre Gaston <pierre@gaston-karlaouzou.com>
-;; Version: 1.0.8
+;; Version: 1.0.9
 ;; Keywords: hypermedia
 ;; URL: http://www.emacswiki.org/cgi-bin/wiki.pl?HttpGet
 
@@ -32,6 +32,8 @@
 ;; Use `http-get' to download an URL.
 
 ;;History
+;; 1.0.9
+;; --added better coding support
 ;; 1.0.8
 ;;  -- rewrote the parser
 ;;  -- correction to the http1.0 usage
@@ -44,7 +46,7 @@
 
 (require 'hexl)
 
-(defvar http-get-version "1.0.8")
+(defvar http-get-version "1.0.9")
 
 
 ;;Proxy
@@ -53,6 +55,12 @@
 
 (defvar http-proxy-port nil
   "*Port number of proxy server.  Default is 80.")
+
+;;Coding sytem
+(defvar http-coding 'iso-8859-1
+   "default coding to be use when the string is inserted in the buffer
+This coding will be modified on Finding the content-type header")
+(make-local-variable 'http-coding)
 
 ;; Filtering
 
@@ -85,14 +93,14 @@ See `http-filter-pre-insert-hook' and `http-filter-post-insert-hook'
 for places where you can do your own stuff such as HTML rendering.
 Argument PROC the proccess that is filtered.
 Argument STRING The string outputed bythe process."
-;  (message "got string %S" string)
   (with-current-buffer (process-buffer proc)
     (let ((moving (= (point) (process-mark proc))))
       (save-excursion
 	" Insert the text, advancing the process marker."
 	(goto-char (process-mark proc))
 	(run-hooks 'http-filter-pre-insert-hook)
-	(insert string)
+        (insert (decode-coding-string string http-coding))
+	;;(insert string)
 	(run-hooks 'http-filter-post-insert-hook)
 	(set-marker (process-mark proc) (point)))
 	(if moving (goto-char (process-mark proc))
@@ -129,10 +137,13 @@ This is set by the function `http-headers'.")
   "Received bytes that have not yet been parsed.")
 (make-local-variable 'http-not-yet-parsed)
 
+
+
+
 (defun http-parser ()
   "Simple parser for http message.
 Parse the status line, headers and chunk"
-  (let ((parsed-string (concat http-not-yet-parsed string )))
+  (let ((parsed-string (concat http-not-yet-parsed string )) content-type)
     (setq string "")
     (setq http-not-yet-parsed "")
     (while (> (string-bytes parsed-string) 0)
@@ -168,6 +179,13 @@ Parse the status line, headers and chunk"
 		  (setq http-parser-state 'chunked)
 		(setq http-parser-state 'dump)
 		)
+	      (when (setq content-type
+			   (cdr (assoc "Content-Type" http-headers)))
+		(string-match "charset=\\(.*\\)" content-type)
+		(set (make-local-variable 'http-coding)
+		(intern-soft (downcase (match-string 1 content-type))))
+		)
+	      
 	      (setq parsed-string (substring parsed-string end-headers))
 	      )
 	  ;;we don't have all the headers yet
@@ -314,7 +332,9 @@ use `decode-coding-region' and get the coding system to use from
   (interactive "sURL: ")
   (setq version (or version 1.0))
   (let* (host dir file port proc buf command start-line (message-headers "") )
-    (unless (string-match "http://\\([^/:]+\\)\\(:\\([0-9]+\\)\\)?/\\(.*/\\)?\\([^:]*\\)" url)
+    (unless (string-match 
+	     "http://\\([^/:]+\\)\\(:\\([0-9]+\\)\\)?/\\(.*/\\)?\\([^:]*\\)" url)
+
       (error "Cannot parse URL %s" url))
     (unless bufname (setq bufname
 			  (format "*HTTP GET %s *" url)))

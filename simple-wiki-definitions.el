@@ -7,11 +7,7 @@
 ;; Maintainer: Pierre Gaston <pierre@gaston-karlaouzou.com>
 
 ;; Keywords:
-;; Version: 1.0.1
-
-
-
-
+;; Version: 1.0.2
  
 ;; This file is NOT (yet) part of GNU Emacs.
  
@@ -29,9 +25,6 @@
 ;; along with GNU Emacs; see the file COPYING.  If not, write to the
 ;; Free Software Foundation, Inc., 59 Temple Place - Suite 330,
 ;; Boston, MA 02111-1307, USA.
- 
-
-
 
 
 (defcustom swd-wiki-defs-list '( 
@@ -107,7 +100,7 @@ the seventh is the save function to use for this wiki
 		       (apply 'concat (split-string user-full-name))))
 	     (cons "text" (buffer-string))
 	     (cons "recent_edit" (simple-wiki-minor-value)))
-       simple-wiki-content-type 
+       http-coding
       (swd-http-version (swd-nick simple-wiki-url)))))
     (simple-wiki-edit-mode)
     (set (make-local-variable 'simple-wiki-url) url)
