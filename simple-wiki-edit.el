@@ -171,9 +171,10 @@ pressing C-c C-m during edits."
   (simple-wiki-edit-mode))
 
 
-(defcustom simple-wiki-fill-column nil
-  "If set to a number, this number will become the default fill-column
-when editing wikis. ")
+
+
+
+
 
 ;;;###autoload
 (defun simple-wiki-edit (url &optional save-func bufname
