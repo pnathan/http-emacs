@@ -3,9 +3,8 @@
 ;; Copyright (C) 2002, 2003  Alex Schroeder
 
 ;; Author: Alex Schroeder <alex@gnu.org>
-
 ;; Maintainer: Pierre Gaston <pierre@gaston-karlaouzou.com>
-;; Version: 1.0.4
+;; Version: 1.0.3
 ;; Keywords: hypermedia
 ;; URL: http://www.emacswiki.org/cgi-bin/wiki.pl?HttpPost
 

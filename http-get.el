@@ -4,6 +4,7 @@
 
 ;; Author: Alex Schroeder <alex@gnu.org>
 ;;         Pierre Gaston <pierre@gaston-karlaouzou.com>
+;; Maintainer: Pierre Gaston <pierre@gaston-karlaouzou.com>
 ;; Version: 1.0.8
 ;; Keywords: hypermedia
 ;; URL: http://www.emacswiki.org/cgi-bin/wiki.pl?HttpGet

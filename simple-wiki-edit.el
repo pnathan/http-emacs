@@ -3,12 +3,10 @@
 ;; Copyright (C) 2002, 2003 Alex Schroeder
 
 ;; Author: Alex Schroeder <alex@gnu.org>
-;; Maintainer: D. Goel <deego@gnufans.org>
-;; Modified by: D. Goel <deego@gnufans.org>
+;; Maintainer: Pierre Gaston <pierre@gaston-karlaouzou.com>
 ;; Version: 1.0.7
 ;; Keywords: hypermedia
 ;; URL: http://www.emacswiki.org/cgi-bin/wiki.pl?SimpleWikiEditMode
-;; Modified by D. Goel <deego@gnufans.org>
 
 ;; This file is not part of GNU Emacs.
 

@@ -1,12 +1,13 @@
 ;;; simple-wiki-completion.el ---
-;; Time-stamp: <2003-04-01 11:49:46 deego>
+;; Time-stamp: <2003-04-03 10:57:41 deego>
 ;; Copyright (C) 2003 D. Goel
 ;; Emacs Lisp Archive entry
 ;; Filename: simple-wiki-completion.el
 ;; Package: simple-wiki-completion
 ;; Author: D. Goel <deego@glue.umd.edu>
+;; Maintainer: Pierre Gaston <pierre@gaston-karlaouzou.com>
 ;; Keywords:
-;; Version: 1.0.8
+;; Version: 1.0.7
 ;; Author's homepage: http://gnufans.net/~deego
 ;; For latest version:
 (defconst simple-wiki-completion-home-page

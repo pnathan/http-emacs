@@ -1,10 +1,11 @@
-;;; simple-wiki-definitions.el ---
+;;; simple-wiki-definitions.el --- common definitions for simple-wiki 
 
-;; Copyright (C) 2003 D. Goel
+;; Copyright (C) 2003 D. Goel, Pierre Gaston
 ;; Emacs Lisp Archive entry
 ;; Filename: simple-wiki-definitions.el
 ;; Package: simple-wiki
-;
+;; Maintainer: Pierre Gaston <pierre@gaston-karlaouzou.com>
+
 ;; Keywords:
 ;; Version: 1.0.1
 
