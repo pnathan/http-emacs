@@ -1,0 +1,5 @@
+2004-11-21  D Goel  <deego@gnufans.org>
+
+	* simple-wiki-definitions.el (swd-wiki-defs-list): Restore
+	swd-additional-headers (useful for passwords, etc.)
+
