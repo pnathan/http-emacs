@@ -144,6 +144,7 @@ grok them.  Note that this is distinct from the third field.
         (headers (swd-additional-headers swd-nick))
 	(proc))
     (when (and http-version (= http-version 1.1))
+      ;;(setq headers (append  '(("Connection" . "close")) headers)))
       (setq headers (append  '(("Connection" . "close")) headers)))
     (setq proc (http-post
                 link

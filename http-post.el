@@ -149,7 +149,6 @@ use `decode-coding-region' and get the coding system to use from
 			  (upcase (symbol-name content-type)))
 		  (format "Content-Length: %d\r\n" (length body))))
     
-
     (when http-emacs-use-cookies
       (let ((cookie (http-cookies-build-header url)))
         (when cookie (add-to-list 'headers cookie))))
@@ -162,7 +161,8 @@ use `decode-coding-region' and get the coding system to use from
                              "\r\n\r\n"))
       (setq header (concat header "\r\n")))
     (when verbose
-      (insert header body "\n\n"))
+      ;;(when t
+      (message "%s" (concat header body "\n\n")))
     (process-send-string proc (concat header body "\r\n"))
     proc))
 
