@@ -3,7 +3,7 @@
 ;; Copyright (C) 2003  Alex Schroeder
 
 ;; Author: Alex Schroeder <alex@gnu.org>
-;; Maintainer: Alex Schroeder <alex@gnu.org>
+;; Maintainer: David Hansen <david.hansen@physik.fu-berlin.de>
 ;; Version: 1.0.0
 ;; Keywords: hypermedia
 ;; URL: http://www.emacswiki.org/cgi-bin/wiki.pl?SimpleWikiEditMode
@@ -27,6 +27,9 @@
 
 ;;; Commentary:
 
+;; IMPORTANT NOTE:  this file is not up to date and very likely broken!
+;;                  use simple-wiki-completions.el instead!
+;;
 ;; Use `emacswiki-browse' to download a page from the Emacs Wiki.
 
 ;;; Code:
