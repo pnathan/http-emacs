@@ -69,6 +69,8 @@ the seventh is the save function to use for this wiki
 
 
 
+(defcustom swd-user-name nil
+  "Set this to override your system username")
 
 ;;save functions
 (defun swd-usemod-wiki-save ()
@@ -85,7 +87,9 @@ the seventh is the save function to use for this wiki
 		   (setq swc-summary-default
 			 (read-from-minibuffer "Summary: " "*")))
 	     '("raw" . "2")
-	     (cons "username" (apply 'concat (split-string user-full-name)))
+	     (cons "username" 
+		   (or swd-user-name
+		       (apply 'concat (split-string user-full-name))))
 	     (cons "text" (buffer-string))
 	     (cons "recent_edit" (simple-wiki-minor-value)))
        simple-wiki-content-type)))
