@@ -130,7 +130,7 @@ pressing C-c C-m during edits."
 
 (define-key simple-wiki-edit-mode-map (kbd "C-c C-c") 'simple-wiki-save)
 (define-key simple-wiki-edit-mode-map (kbd "C-c C-o") 'simple-wiki-open)
-(define-key simple-wiki-edit-mode-map (kbd "C-c C-g") 'simple-wiki-follow)
+(define-key simple-wiki-edit-mode-map (kbd "C-c C-f") 'simple-wiki-follow)
 (define-key simple-wiki-edit-mode-map (kbd "C-c C-m")
   'simple-wiki-minor-toggle)
 (define-key simple-wiki-edit-mode-map (kbd "C-c C-n") 'simple-wiki-next)
