@@ -175,7 +175,7 @@ subexpression.")
    '(simple-wiki-match-tag-em . (0 'simple-wiki-emph-face append))
    '(simple-wiki-match-tag-strong . (0 'simple-wiki-strong-face append))
 
-   ;; tags
+   ;; tags FIXME: oddmuse knows no parameters
    (list (concat "\\(</?\\)"
                  "\\([A-Za-z]+\\)"
                  "\\(\\([ \t]+[a-zA-Z]+\\)=\\(\".*\"\\)\\)*"
@@ -489,6 +489,16 @@ Return nil otherwise."
             nil
           (store-match-data (list beg end))
           t)))))
+
+(defun simple-wiki-match-code-jsp (limit)
+  "Match regions of preformated text in jsp wikis."
+  (when (search-forward "{{{" limit t)
+    (let ((beg (match-end 0)) end)
+      (if (search-forward "}}}" limit t)
+          (setq end (match-beginning 0))
+        (setq end (point)))
+      (store-match-data (list beg end))
+      t)))
 
 
 
@@ -910,7 +920,7 @@ Use the symbol 'none as the value if the wiki doesn't support the property."
 
  :camelcase
  (if (featurep 'xemacs)
-     ;; FIXME: no character classes.  only ascii chars will work
+     ;; FIXME: no character classes.  only ascii chars will work.
      (cons (concat "\\([^~]\\|^\\)"
                    "\\<\\([A-Z][a-z]+"
                    "\\([A-Z][a-z]+\\)+\\)\\(\\>\\|'\\)"  2))
@@ -919,7 +929,7 @@ Use the symbol 'none as the value if the wiki doesn't support the property."
                  "\\([[:upper:]][[:lower:]]+\\)+\\)\\(\\>\\|'\\)")  2))
 
  :free-link '("\\(^\\|[^~]\\)\\[\\([^\n]+?\\)\\]" . 2)
- 
+
  :tags '(("pre" . t) ("verbatim" . t) ("b" . nil) ("big" . nil) ("i" . nil)
          ("small" . nil) ("tt" . nil) ("em" . nil) ("strong" . nil)
          ("abbr" . nil) ("acronym" . nil) ("cite" . nil) ("code" . nil)
@@ -929,11 +939,9 @@ Use the symbol 'none as the value if the wiki doesn't support the property."
  :headlines '(("^[ \t]*!!!\\(.*?\\)$" . 1)
               ("^[ \t]*!!\\([^!].*?\\)$" . 1)
               ("^[ \t]*!\\([^!].*?\\)$" . 1)
-              nil
-              nil
-              nil)
+              nil nil nil)
 
- :outline '("[ \t]!+" . "\n")
+ :outline '("[ \t]*!+" . "\n")
  
  :em-strings '("_" . "_")
 
@@ -944,15 +952,16 @@ Use the symbol 'none as the value if the wiki doesn't support the property."
  ;; FIXME: this works not well with font-lock...
  :deflist '("^\\([^\n]+:\\)[ \t]*\n[ \t]+.*?" . 1)
 
- :em-patterns (list '("\\(\\W\\|^\\)_.*?_\\(\\W\\|$\\)" . 0)
-                    '("\\(\\W\\|^\\)\\*.*?\\*\\(\\W\\|$\\)" . 0)
+ :em-patterns (list '("\\(\\W\\|^\\)_.*?_" . 0)
+                    '("\\W\\*.*?\\*" . 0) ; bold at bol is a bullet list
+                    ;; FIXME: *_blah_* at bol is a bullet list
                     (cons (concat "\\(\\W\\|^\\)\\(\\*_\\|_\\*\\)"
-                                  ".*?\\(\\_*\\|\\*_\\)\\(\\W\\|$\\)")  0))
+                                  ".*?\\(\\_*\\|\\*_\\)")  0))
 
  :enum '("^\\([-*#o+ \t]*#+\\)\\([^-#*+]\\|$\\)" . 1)
 
  :bullet '("^\\([-*#o+ \t]*\\([-*+]\\|o[ \t]+\\)\\)\\([^-*#+]\\|$\\)" . 1)
- 
+
  :smilies 'none
 
  :linebreak '("%%%" . 0)
@@ -969,9 +978,9 @@ Use the symbol 'none as the value if the wiki doesn't support the property."
   '(simple-wiki-match-tag-code . (0 'simple-wiki-code-face append))
   '(simple-wiki-match-tag-pre . (0 'simple-wiki-code-face append))
 
-  '("\\(\\W\\|^\\)=.*?=\\(\\W\\|$\\)" . (0 'simple-wiki-teletype-face append))
+  '("\\(\\W\\|^\\)=.*?=" . (0 'simple-wiki-teletype-face append))
 
-  ;; tags
+  ;; tags FIXME: highlight plugins instead of parameters
   (list (concat "\\(</?\\)"
                 "\\([A-Za-z]+\\)"
                 "\\(\\([ \t]+[a-zA-Z]+\\)=\\(\".*\"\\)\\)*"
@@ -984,6 +993,53 @@ Use the symbol 'none as the value if the wiki doesn't support the property."
 
   '(simple-wiki-match-tag-verbatim . (0 'simple-wiki-code-face t))))
 
+
+
+
+;; jspwiki
+
+(simple-wiki-define-major-mode
+ 'jspwiki
+ "JspWiki"
+ "Simple mode to edit jsp wiki pages.
+\\{simple-jspwiki-mode-map}"
+
+ ;; not the default but enabled on http://jspwiki.org
+ :camelcase
+ (if (featurep 'xemacs)
+     ;; FIXME: no character classes.  only ascii chars will work.
+     (cons (concat "\\([^~]\\|^\\)"
+                   "\\(\\<[A-Z]+[a-z][a-zA-Z0-9]*[A-Z][a-zA-Z0-9]*\\>\\)") 2)
+   (cons (concat "\\([^~]\\|^\\)"
+                 "\\<\\([[:upper:]]+[[:lower:]][[:alnum:]]*"
+                 "[[:upper:]][[:alnum:]]*\\>\\)") 2))
+
+ :free-link '("\\(^\\|[^[]\\)\\[\\([^[][^\n]+?\\)\\]" . 2)
+
+ ;; really?
+ :tags 'none
+
+ :headlines '(("^[ \t]*!!!\\(.*?\\)$" . 1)
+              ("^[ \t]*!!\\([^!].*?\\)$" . 1)
+              ("^[ \t]*!\\([^!].*?\\)$" . 1)
+              nil nil nil)
+
+ :outline '("[ \t]*!+" . "\n")
+
+ :strong-strings '("__" . "__")
+
+ :em-patterns (list '("\\(\\W\\|^\\)''.*?''" . 0)
+                    '("\\(\\W\\|^\\)__.*?__" . 0)
+                    (cons (concat "\\(\\W\\|^\\)\\(''__\\|__''\\)"
+                                  ".*?\\(__''\\|''__\\)")  0))
+
+ :linebreak '("\\\\\\\\" . 0)
+
+ :keywords
+ (list
+  '("\\(\\W\\|^\\)\\({{[^{].*?}}\\)" .
+    (2 'simple-wiki-teletype-face append))
+  '(simple-wiki-match-code-jsp . (0 'simple-wiki-code-face t))))
 
 
 
