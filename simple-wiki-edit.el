@@ -112,6 +112,7 @@ pressing C-c C-t during edits.")
 (define-key simple-wiki-edit-mode-map (kbd "C-c C-p") 'simple-wiki-prev)
 (define-key simple-wiki-edit-mode-map (kbd "C-/") 'pcomplete)
 (define-key simple-wiki-edit-mode-map (kbd "C-c C-/") 'pcomplete)
+(define-key simple-wiki-edit-mode-map (kbd "C-c C-_") 'pcomplete)
 (define-key simple-wiki-edit-mode-map (kbd "C-c TAB") 'pcomplete)
 
 
