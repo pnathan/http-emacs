@@ -61,7 +61,7 @@
      swd-usemod-wiki-save
      utf-8)
     ("octave"
-     "http://gnufans.net/octave.pl"
+     "http://wiki.octave.org/wiki.pl"
      "?action=browse&raw=2&id="
      "?action=index&raw=1"
      "?action=rc&raw=1"
@@ -88,11 +88,11 @@
 the first element is the nickname,
 the second is the base url,
 the third is possible url parameters to put before the page name,
-the fourth is  the possible parameters to view recentchanges,
+the fourth is  the possible parameters to view index,
 the fifth is the possible parameters to view recentchanges,
 the sixth is the version of the http-protocol to use,
 the seventh is the save function to use for this wiki,
-the eighth the encoding")
+the eighth is the encoding")
 
 
 (defcustom swd-user-name nil
@@ -172,7 +172,7 @@ the eighth the encoding")
 (defun swd-index-parameters (nick)
   (fourth (assoc nick swd-wiki-defs-list)))
 
-(defun swd-rc-ptarameters (nick)
+(defun swd-rc-parameters (nick)
   (fifth (assoc nick swd-wiki-defs-list)))
 
 (defun swd-http-version (nick)
