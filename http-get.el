@@ -37,6 +37,7 @@
 ;; 1.0.15
 ;;   - made `http-parse-headers' RFC 2616 compatible (removing whitespaces,
 ;;     headers may spawn several line)
+;;   - log message headers
 ;; 1.0.14
 ;;   - Removed attempt to fix bug in 1.0.12, not needed anymore since 1.0.13.
 ;; 1.0.13
@@ -397,6 +398,9 @@ use `decode-coding-region' and get the coding system to use from
                           (if http-proxy-host
                               (concat "http://" host "/") "/") dir file version)
 		  (format "Host: %s\r\n" host)))
+    (when http-emacs-use-cookies
+      (let ((cookie (http-cookies-build-header url)))
+        (when cookie (add-to-list 'headers cookie))))
     (when headers
       (setq message-headers (mapconcat (lambda (pair)
 					 (concat (car pair) ": " (cdr pair)))
@@ -405,6 +409,7 @@ use `decode-coding-region' and get the coding system to use from
     ;; mapconcat doesn't append the \r\n for the final line
     (setq command (format "%s%s\r\n\r\n" start-line message-headers))
     (http-log (format "Connecting to %s %d\nCommand:\n%s\n" host port command))
+    (http-log message-headers)
     (set-process-sentinel proc (or sentinel 'ignore))
     (set-process-coding-system proc 'binary 'binary) ; we need \r\n
     ;; we need this to be able to correctly decode the buffer with

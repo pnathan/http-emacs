@@ -4,7 +4,7 @@
 
 ;; Author: Alex Schroeder <alex@gnu.org>
 ;; Maintainer: David Hansen <david.hansen@physik.fu-berlin.de>
-;; Version: 1.0.4
+;; Version: 1.0.5
 ;; Keywords: hypermedia
 ;; URL: http://www.emacswiki.org/cgi-bin/wiki.pl?HttpPost
 
@@ -29,8 +29,10 @@
 
 ;; Use `http-post' to post to a URL.
 
-;;; ChangeLog:
+;;; Change Log:
 
+;; 1.0.5
+;;   - Added experimental cookies support.
 ;; 1.0.4
 ;;   - Fixed bug in `http-post' that ignored the headers argument.
 ;; 1.0.3
@@ -41,8 +43,9 @@
 ;;; Code:
 
 (require 'http-get)
+(require 'http-cookies)
 
-(defvar http-post-version "1.0.4")
+(defvar http-post-version "1.0.5")
 
 
 ;; The main function
@@ -121,6 +124,10 @@ use `decode-coding-region' and get the coding system to use from
     (erase-buffer)
     (kill-all-local-variables)
 
+    (with-current-buffer buf
+      (set (make-local-variable 'http-host) host)
+      (set (make-local-variable 'http-url) url))
+
     (let (result)
       (dolist (param parameters)
 	(setq result (cons (concat (car param) "="
@@ -139,6 +146,9 @@ use `decode-coding-region' and get the coding system to use from
 		  (format "; charset=%s\r\n"
 			  (upcase (symbol-name content-type)))
 		  (format "Content-Length: %d\r\n" (length body))))
+    (when http-emacs-use-cookies
+      (let ((cookie (http-cookies-build-header url)))
+        (when cookie (add-to-list 'headers cookie))))
     (if headers
         (setq header (concat header
                              (mapconcat (lambda (pair)

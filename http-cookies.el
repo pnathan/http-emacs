@@ -6,7 +6,6 @@
 ;; Maintainer: David Hansen <david.hansen@physik.fu-berlin.de>
 ;; Version: 1.0.0
 ;; Keywords: hypermedia
-;; URL: no URL yet.
 
 ;; This file is not part of GNU Emacs.
 
@@ -28,20 +27,26 @@
 
 ;;; Commentary:
 
-;; see http://www.faqs.org/rfcs/rfc2109.html and
+;; Implementation of old netscape cookies (used by maybe all servers) and
+;; version 1 cookies.
+;;
+;; See http://www.faqs.org/rfcs/rfc2109.html and
 ;; http://wp.netscape.com/newsref/std/cookie_spec.html
 
 ;;; Change log:
 
 ;;; TODO:
 
-;;    - secure attribute will screw the parser
-;;    - maybe convert max-age to expires (we don't send it back)
-;;    - hash: hostname -> cookie, domain -> cookie
 ;;    - whitelist
 ;;    - blacklist
+;;    - reading from file, saving to file
+;;    - expire
 
 ;;; Code:
+
+(require 'time-date)
+
+(defconst http-cookies-version "1.0.0")
 
 (defgroup http-emacs ()
   "Simple HTTP client implementation in elisp.")
@@ -69,6 +74,14 @@ If one of these function returns nil the cookie will be rejected.  Each
 function can access the free variables `cookie', `host' (from the url)
 `path' (from the URL) and `url' to make its decision.")
 
+(defvar http-cookies-host-hash
+  (make-hash-table :test 'equal)
+  "Hash to look up cookies by host name.")
+
+(defvar http-cookies-domain-hash
+  (make-hash-table :test 'equal)
+  "Hash to look up cookies by domain.")
+
 
 
 ;; functions for parsing the header
@@ -85,7 +98,7 @@ the header value if there is more than one cookie."
       (setq line (replace-match "\"\\1\"" t nil line 1)))
     line))
 
-(defun http-find-char-in-string (char string &optional start)
+(defun http-cookies-find-char-in-string (char string &optional start)
   "Return the first position of CHAR in STRING.
 If START is non-nil start at position START."
   (unless start
@@ -113,7 +126,8 @@ Ignores SEP-CHAR if it is in a quoted string.  Return a list of the
 substrings."
   (let ((qstrings (http-cookies-find-quoted-strings header-value))
         (start 0) (beg 0) pos in-qstring strings)
-    (while (setq pos (http-find-char-in-string sep-char header-value start))
+    (while (setq pos (http-cookies-find-char-in-string
+                      sep-char header-value start))
       (unless (= pos start)           ; ignore empty strings
         ;; check if pos is in a quoted string
         (dolist (qstring-pos qstrings)
@@ -133,36 +147,204 @@ substrings."
   "Parse one cookie.
 Return an alist ((NAME . VALUE) (attr1 . value1) (attr2 . value2) ...)
 or nil on error."
-  (let (name value attrs error)
+  (let (attrs error)
     (dolist (attr (http-cookies-split-string string ?\;))
       (if (string-match http-token-value-regexp attr)
           (add-to-list 'attrs (cons (match-string 1 attr)
                                     (match-string 2 attr)))
         ;; match the secure attribute
         (if (string-match "[ \t]*\\([a-zA-Z]+\\)[ \t]*"  attr)
-            (add-to-list 'attrs (cons (match-string 0 attr t)))
+            (add-to-list 'attrs (cons (match-string 1 attr) t))
           (setq error t)
-          (message "Cannot parse cookie %s" str))))
+          (message "Cannot parse cookie %s" string))))
     (unless error
       attrs)))
 
 (defun http-cookies-set (url headers)
-  ;; The server may send several "Set-Cookie:" headers.
-  (let ((host (http-cookies-hostname url)) (path (http-cookies-path url))
+  "Set the cookies from the response to a request of URL.
+Set HEADERS to the headers of the response."
+  (let ((host (http-cookies-url-host url)) (path (http-cookies-url-path url))
         header-value cookie)
+    ;; The server may send several "Set-Cookie:" headers.
     (dolist (line headers)
       (when (equal (car line) "set-cookie")
         (setq header-value (http-cookies-ns-to-rfc (cdr line)))
         ;; there may be several cookies separated by ","
         (dolist (raw-cookie (http-cookies-split-string header-value ?\,))
           (setq cookie (http-cookies-parse-cookie raw-cookie))
-          (http-cookies-accept))))))
+          ;; (message "%s" raw-cookie)
+          (when (http-cookies-accept)
+            ;; (message "accepted")
+            (http-cookies-store host cookie)))))))
+
+
+
+;; storing cookies
+
+(defun http-cookies-name (cookie)
+  "Return the name of the COOKIE."
+  (car (car cookie)))
+
+(defun http-cookies-path (cookie)
+  "Return the value of the path attribute of the COOKIE."
+  (let ((attr (or (assoc "path" cookie) (assoc "Path" cookie))))
+    (when attr
+      (cdr attr))))
+
+(defun http-cookies-domain (cookie)
+  "Return the value of the domain attribute of the COOKIE."
+  (let ((attr (or (assoc "domain" cookie) (assoc "Domain" cookie))))
+    (when attr
+      (cdr attr))))
+
+(defun http-cookies-expires (cookie)
+  "Return the value of the expires attribute of the COOKIE."
+  (let ((attr (assoc "expires" cookie)))
+    (when attr
+      (cdr attr))))
+
+(defun http-cookies-max-age (cookie)
+  "Return the value of the Max-Age attribute of the COOKIE."
+  (let ((attr (assoc "Max-Age" cookie)))
+    (when attr
+      (cdr attr))))
+
+(defun http-cookies-version (cookie)
+  "Return the value of the version attribute of the COOKIE."
+  (let ((version (assoc "Version" cookie)))
+    (when version
+      (if (equal version "1")
+          t
+        (message "Cookie version %s not supported." version)
+        nil))))
+
+(defun http-cookies-equal (c1 c2)
+  "Return non nil if the given cookies are equal.
+Old netscape cookies are equal if the name and path attributes are equal.
+Version 1 cookies are equal if name path and domain are equal."
+  (if (and (http-cookies-version c1) (http-cookies-version c2))
+      ;; version 1 cookies
+      (and (equal (http-cookies-name c1) (http-cookies-name c2))
+           (equal (http-cookies-path c1) (http-cookies-path c2))
+           (equal (http-cookies-domain c1) (http-cookies-domain c2)))
+    ;; netscape cookies
+    (and (equal (http-cookies-name c1) (http-cookies-name c2))
+         (equal (http-cookies-path c1) (http-cookies-path c2)))))
+
+(defun http-cookies-expired (expire-string)
+  "Return non nil if EXPIRE-STRING is in the past."
+  (> (time-to-seconds (time-since expire-string)) 0.0))
+
+(defun http-cookies-remove (cookie key table)
+  "Remove cookies \"equal\" to COOKIE from the list stored with KEY in TABLE."
+  (let ((cookie-list (gethash key table)) new-list)
+    (dolist (entry cookie-list)
+      (unless (http-cookies-equal entry cookie)
+        (add-to-list 'new-list entry)))
+    (when cookie-list
+      (remhash key table)
+      (puthash key new-list table))))
+
+(defun http-cookies-store (host cookie)
+  "Store the given COOKIE from HOST in the hash tables.
+Remove cookie from the tables if the given COOKIE expires in the past or
+has an \"Max-Age\" of 0."
+  (let ((domain (http-cookies-domain cookie))
+        (max-age (http-cookies-max-age cookie))
+        (expires (http-cookies-expires cookie))
+        (cookie-list))
+    ;; remove an possible "equal" old cookie
+    (http-cookies-remove cookie host http-cookies-host-hash)
+    (when domain
+      (http-cookies-remove cookie domain http-cookies-domain-hash))
+    ;; check if expires is in the past or Max-Age is zero
+    (unless (or (and max-age (= (string-to-number max-age) 0))
+                (and expires (http-cookies-expired expires)))
+      ;; convert "Max-Age" to "expire"
+      (when max-age
+        ;; this value does not have to be in the "right" format
+        ;; it's enough if `parse-time-string' can parse it
+        (setq expires (format-time-string
+                       "%Y-%m-%d %T %z"
+                       (time-add (current-time) (seconds-to-time max-age))
+                       t))
+        (setcdr (assoc "Max-Age" cookie) expires)
+        (setcar (assoc "Max-Age" cookie) "expires"))
+      (setq cookie-list (gethash host http-cookies-host-hash))
+      (add-to-list 'cookie-list cookie)
+      (puthash host cookie-list http-cookies-host-hash)
+      (when domain
+        (setq cookie-list (gethash domain http-cookies-domain-hash))
+        (add-to-list 'cookie-list cookie)
+        (puthash domain cookie-list http-cookies-domain-hash)))))
+
+
+
+;; building the header to send back the cookie
+
+(defun http-cookies-cookie-to-string (cookie)
+  "Return the cookie as a string to be used as a header value."
+  (let* ((name (http-cookies-name cookie))
+         (value (cdr (assoc name cookie)))
+         (path (http-cookies-path cookie))
+         (domain (http-cookies-domain cookie))
+         (string))
+    (if (http-cookies-version cookie)
+        ;; version 1 cookie
+        (progn
+          (setq string (concat "$Version = \"1\"; " name " = \"" value "\""))
+          (when path
+            (setq string (concat string "; $Path = \"" path "\"")))
+          (when domain
+            (setq string (concat string "; $Domain = \"" domain "\""))))
+      ;; netscape cookies
+      (setq string (concat name "=" value)))))
+
+(defun http-cookies-cookie-in-list (cookie list)
+  "Return non-nil if a cookie \"equal\" to the given COOKIE is in LIST."
+  (let ((in-list))
+    (dolist (element list)
+      (unless in-list
+        (setq in-list (http-cookies-equal cookie element))))
+    in-list))
+
+(defun http-cookies-path-depth (cookie)
+  "Return the number of dashes in the path attribute of the cookie."
+  (let ((patch http-cookies-path cookie) (n 0) (start 0))
+    (while (setq start (http-cookies-find-char-in-string ?\/ path start))
+      (setq n (1+ n)))
+    n))
+
+(defun http-cookie-path-depth-less (c1 c2)
+  "Return non nil if the path depth of cookie C1 is less than C2."
+  (< (http-cookies-path-depth c1) (http-cookies-path-depth c2)))
+
+(defun http-cookies-build-header (url)
+  "Return a pair (\"Cookie\" . <header value>).
+Use this to send back cookies to the given URL."
+  (let ((host (http-cookies-url-host url)) (domain) (cookie-list) (string))
+    (when (string-match "^[^.]+\\(\\..+\\)" host)
+      (setq domain (match-string 1 host))
+      (dolist (cookie (gethash host http-cookies-host-hash))
+        (unless (http-cookies-expired (http-cookies-expires cookie))
+          (add-to-list 'cookie-list cookie)))
+      (dolist (cookie (gethash domain http-cookies-domain-hash))
+        (unless (or (http-cookies-cookie-in-list cookie cookie-list)
+                    (http-cookies-expired (http-cookies-expires cookie)))
+          (add-to-list 'cookie-list cookie)))
+      (setq cookie-list (sort cookie-list 'http-cookies-path-depth-less))
+      (dolist (cookie cookie-list)
+        (if string
+            (setq string (concat string "; "
+                                 (http-cookies-cookie-to-string cookie)))
+          (setq string (http-cookies-cookie-to-string cookie)))))
+    (cons "Cookie" string)))
 
 
 
 ;; extract parts of the url
 
-(defun http-cookies-hostname (url)
+(defun http-cookies-url-host (url)
   "Return the hostname of URL"
   (unless (string-match
            "http://\\([^/:]+\\)\\(:\\([0-9]+\\)\\)?/\\(.*/\\)?\\([^:]*\\)"
@@ -170,7 +352,7 @@ or nil on error."
     (error "Cannot parse URL %s." url))
   (match-string 1 url))
 
-(defun http-cookies-path (url)
+(defun http-cookies-url-path (url)
   "Return the path of the URL."
   (unless (string-match
            "http://\\([^/:]+\\)\\(:\\([0-9]+\\)\\)?/\\(.*/\\)?\\([^:]*\\)"
@@ -183,6 +365,8 @@ or nil on error."
 ;; functions to check the cookie (implementation of 4.3.2 of RFC 2109)
 
 (defun http-cookies-accept ()
+  "Return non nil if the cookie should be accepted.
+The tests are based on the functions in `http-cookies-accept-functions'."
   (let ((accept t))
     (dolist (fun http-cookies-accept-functions)
       (when accept
@@ -222,7 +406,7 @@ host name without the domain attribute still contains one or more dots."
     (if (not domain)
         t
       (when (string-match (concat domain "$") host)
-        (not (http-find-char-in-string
+        (not (http-cookies-find-char-in-string
               ?\. (substring host 0 (match-beginning 0))))))))
 
 
