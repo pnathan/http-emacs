@@ -286,55 +286,30 @@ subexpression.")
     "Face for WiKi headings at level 6."
     :group 'simple-wiki-faces))
 
-(if (featurep 'xemacs)
-    (defface simple-wiki-emph-face
-      '((t (:italic t)))
-      "Face for ''emphasis''."
-      :group 'simple-wiki-faces)
-  (defface simple-wiki-emph-face
-    '((t (:slant italic)))
-    "Face for ''emphasis''."
-    :group 'simple-wiki-faces))
+(defface simple-wiki-emph-face
+  '((t (:italic t)))
+  "Face for ''emphasis''."
+  :group 'simple-wiki-faces)
 
-(if (featurep 'xemacs)
-    (defface simple-wiki-strong-face
-      '((t (:bold t)))
-      "Face for '''strong emphasis'''."
-      :group 'simple-wiki-faces)
-  (defface simple-wiki-strong-face
-    '((t (:weight bold)))
-    "Face for '''strong emphasis'''."
-    :group 'simple-wiki-faces))
+(defface simple-wiki-strong-face
+  '((t (:bold t)))
+  "Face for '''strong emphasis'''."
+  :group 'simple-wiki-faces)
 
-(if (featurep 'xemacs)
-    (defface simple-wiki-strong-emph-face
-      '((t (:bold t :italic t)))
-      "Face for '''''stronger emphasis'''''."
-      :group 'simple-wiki-faces)
-  (defface simple-wiki-strong-emph-face
-    '((t (:weight bold :slant italic)))
-    "Face for '''''stronger emphasis'''''."
-    :group 'simple-wiki-faces))
+(defface simple-wiki-strong-emph-face
+  '((t (:bold t :italic t)))
+  "Face for '''''stronger emphasis'''''."
+  :group 'simple-wiki-faces)
 
-(if (featurep 'xemacs)
-    (defface simple-wiki-italic-face
-      '((t (:italic t)))
-      "Face for <i>italic</i>."
-      :group 'simple-wiki-faces)
-  (defface simple-wiki-italic-face
-    '((t (:slant italic)))
-    "Face for <i>italic</i>."
-    :group 'simple-wiki-faces))
+(defface simple-wiki-italic-face
+  '((t (:italic t)))
+  "Face for <i>italic</i>."
+  :group 'simple-wiki-faces)
 
-(if (featurep 'xemacs)
-    (defface simple-wiki-bold-face
-      '((t (:bold t)))
-      "Face for <b>bold</b>."
-      :group 'simple-wiki-faces)
-  (defface simple-wiki-bold-face
-    '((t (:weight bold)))
-    "Face for <b>bold</b>."
-    :group 'simple-wiki-faces))
+(defface simple-wiki-bold-face
+  '((t (:bold t)))
+  "Face for <b>bold</b>."
+  :group 'simple-wiki-faces)
 
 (if (featurep 'xemacs)
     (defface simple-wiki-strike-face
@@ -351,21 +326,13 @@ subexpression.")
   "Face for <u>underline</u>."
   :group 'simple-wiki-faces)
 
-(if (featurep 'xemacs)
-    (defface simple-wiki-local-link-face
-      '((((class color) (background dark))
-         (:foreground "skyblue3" :bold t))
-        (((class color) (background light))
-         (:foreground "royal blue" :bold t)))
-      "Face for links to pages on the same wiki."
-      :group 'simple-wiki-faces)
-  (defface simple-wiki-local-link-face
-    '((((class color) (background dark))
-       (:foreground "skyblue3" :weight bold))
-      (((class color) (background light))
-       (:foreground "royal blue" :weight bold)))
-    "Face for links to pages on the same wiki."
-    :group 'simple-wiki-faces))
+(defface simple-wiki-local-link-face
+  '((((class color) (background dark))
+     (:foreground "skyblue3" :bold t))
+    (((class color) (background light))
+     (:foreground "royal blue" :bold t)))
+  "Face for links to pages on the same wiki."
+  :group 'simple-wiki-faces)
 
 (defface simple-wiki-teletype-face
   '((((class color) (background dark)) (:background "grey15"))
@@ -387,21 +354,13 @@ subexpression.")
   "Face for links to pages on the same wiki."
   :group 'simple-wiki-faces)
 
-(if (featurep 'xemacs)
-    (defface simple-wiki-smiley-face
-      '((((class color) (background dark))
-         (:foreground "gold" :bold t))
-        (((class color) (background light))
-         (:foreground "goldenrod" :bold t)))
-      "Face for links to pages on the same wiki."
-      :group 'simple-wiki-faces)
-  (defface simple-wiki-smiley-face
-    '((((class color) (background dark))
-       (:foreground "gold" :weight bold))
-      (((class color) (background light))
-       (:foreground "goldenrod" :weight bold)))
-    "Face for links to pages on the same wiki."
-    :group 'simple-wiki-faces))
+(defface simple-wiki-smiley-face
+  '((((class color) (background dark))
+     (:foreground "gold" :bold t))
+    (((class color) (background light))
+     (:foreground "goldenrod" :bold t)))
+  "Face for links to pages on the same wiki."
+  :group 'simple-wiki-faces)
 
 
 
@@ -630,20 +589,24 @@ face used for highlighting and overwrite may be 'prepend,
   (unless (equal simple-wiki-link-pattern 'none)
     (simple-wiki-add-keyword simple-wiki-link-pattern
                              'simple-wiki-local-link-face
-                             'prepend))
+                             'append))
   (unless (equal simple-wiki-free-link-pattern 'none)
     (simple-wiki-add-keyword simple-wiki-free-link-pattern
                              'simple-wiki-local-link-face
-                             'prepend))
+                             'append))
   ;; smilies
   (unless (equal simple-wiki-smilies-pattern 'none)
     (simple-wiki-add-keyword simple-wiki-smilies-pattern
                              'simple-wiki-smiley-face
                              t))
-
   ;; indent
   (unless (equal simple-wiki-indent-pattern 'none)
     (simple-wiki-add-keyword simple-wiki-indent-pattern
+                             'font-lock-comment-face
+                             t))
+  ;; horizontal lines
+  (unless (equal simple-wiki-horiz-line-pattern 'none)
+    (simple-wiki-add-keyword simple-wiki-horiz-line-pattern
                              'font-lock-comment-face
                              t))
   ;; enums
@@ -665,19 +628,13 @@ face used for highlighting and overwrite may be 'prepend,
   (let (em-re)
     (unless (equal simple-wiki-em-patterns 'none)
       (when (setq em-re (first simple-wiki-em-patterns))
-        (simple-wiki-add-keyword em-re 'simple-wiki-emph-face 'prepend))
+        (simple-wiki-add-keyword em-re 'simple-wiki-emph-face 'append))
       (when (setq em-re (second simple-wiki-em-patterns))
-        (simple-wiki-add-keyword em-re 'simple-wiki-strong-face 'prepend))
+        (simple-wiki-add-keyword em-re 'simple-wiki-strong-face 'append))
       (when (setq em-re (third simple-wiki-em-patterns))
         (simple-wiki-add-keyword em-re
                                  'simple-wiki-strong-emph-face
-                                 'prepend))))
-  ;; horizontal lines
-  (unless (equal simple-wiki-horiz-line-pattern 'none)
-    (simple-wiki-add-keyword simple-wiki-horiz-line-pattern
-                             'font-lock-comment-face
-                             'prepend))
-
+                                 'append))))
   ;; line breaks
   (unless (equal simple-wiki-line-break-pattern 'none)
     (simple-wiki-add-keyword simple-wiki-line-break-pattern
@@ -735,79 +692,51 @@ Use the symbol 'none as the value if the wiki doesn't support the property."
       ,(intern (concat "simple-" (symbol-name mode) "-mode"))
       text-mode ,name ,doc-string
 
-      (when (quote ,(plist-get properties :tags))
-        (set (make-local-variable 'simple-wiki-tag-list)
-             (quote ,(plist-get properties :tags))))
-
-      (when (quote ,(plist-get properties :camelcase))
-        (set (make-local-variable 'simple-wiki-link-pattern)
-             (quote ,(plist-get properties :camelcase))))
-
-      (when (quote ,(plist-get properties :free-link))
-        (set (make-local-variable 'simple-wiki-free-link-pattern)
-             (quote ,(plist-get properties :free-link))))
-
-      (when (quote ,(plist-get properties :smilies))
-        (set (make-local-variable 'simple-wiki-smilies-pattern)
-             (quote ,(plist-get properties :smilies))))
-
-      (when (quote ,(plist-get properties :em-strings))
-        (set (make-local-variable 'simple-wiki-em-strings)
-             (quote ,(plist-get properties :em-strings))))
-
-      (when (quote ,(plist-get properties :strong-strings))
-        (set (make-local-variable 'simple-wiki-strong-strings)
-             (quote ,(plist-get properties :strong-strings))))
-
-      (when (quote ,(plist-get properties :strong-em-strings))
-        (set (make-local-variable 'simple-wiki-strong-em-strings)
-             (quote ,(plist-get properties :strong-em-strings))))
-
-      (when (quote ,(plist-get properties :em-patterns))
-        (set (make-local-variable 'simple-wiki-em-patterns)
-             (quote ,(plist-get properties :em-patterns))))
-
-      (when (quote ,(plist-get properties :headlines))
-        (set (make-local-variable 'simple-wiki-headline-patterns)
-             (quote ,(plist-get properties :headlines))))
-
-      (when (quote ,(plist-get properties :keywords))
-        (set (make-local-variable 'simple-wiki-additional-keywords)
-             (quote ,(plist-get properties :keywords))))
-
-      (when (quote ,(plist-get properties :outline))
-        (set (make-local-variable 'simple-wiki-outline-patterns)
-             (quote ,(plist-get properties :outline))))
-
-      (when (quote ,(plist-get properties :linebreak))
-        (set (make-local-variable 'simple-wiki-line-break-pattern)
-             (quote ,(plist-get properties :linebreak))))
-
-      (when (quote ,(plist-get properties :horiz))
-        (set (make-local-variable 'simple-wiki-horiz-line-pattern)
-             (quote ,(plist-get properties :horiz))))
-
-      (when (quote ,(plist-get properties :enum))
-        (set (make-local-variable 'simple-wiki-enum-pattern)
-             (quote ,(plist-get properties :enum))))
-
-      (when (quote ,(plist-get properties :bullet))
-        (set (make-local-variable 'simple-wiki-bullet-pattern)
-             (quote ,(plist-get properties :bullet))))
-
-      (when (quote ,(plist-get properties :indent))
-        (set (make-local-variable 'simple-wiki-indent-pattern)
-             (quote ,(plist-get properties :indent))))
-
-      (when (quote ,(plist-get properties :deflist))
-        (set (make-local-variable 'simple-wiki-definition-pattern)
-             (quote ,(plist-get properties :deflist))))
+      ;; ugly!  ugly!  ugly!
+      (dolist (pair
+               (list
+                (cons 'simple-wiki-tag-list
+                      (quote ,(plist-get properties :tags)))
+                (cons 'simple-wiki-link-pattern
+                      (quote ,(plist-get properties :camelcase)))
+                (cons 'simple-wiki-free-link-pattern
+                      (quote ,(plist-get properties :free-link)))
+                (cons 'simple-wiki-smilies-pattern
+                      (quote ,(plist-get properties :smilies)))
+                (cons 'simple-wiki-em-strings
+                      (quote ,(plist-get properties :em-strings)))
+                (cons 'simple-wiki-strong-strings
+                      (quote ,(plist-get properties :strong-strings)))
+                (cons 'simple-wiki-strong-em-strings
+                      (quote ,(plist-get properties :strong-em-strings)))
+                (cons 'simple-wiki-em-patterns
+                      (quote ,(plist-get properties :em-patterns)))
+                (cons 'simple-wiki-headline-patterns
+                      (quote ,(plist-get properties :headlines)))
+                (cons 'simple-wiki-additional-keywords
+                      (quote ,(plist-get properties :keywords)))
+                (cons 'simple-wiki-outline-patterns
+                      (quote ,(plist-get properties :outline)))
+                (cons 'simple-wiki-line-break-pattern
+                      (quote ,(plist-get properties :linebreak)))
+                (cons 'simple-wiki-horiz-line-pattern
+                      (quote ,(plist-get properties :horiz)))
+                (cons 'simple-wiki-enum-pattern
+                      (quote ,(plist-get properties :enum)))
+                (cons 'simple-wiki-bullet-pattern
+                      (quote ,(plist-get properties :bullet)))
+                (cons 'simple-wiki-indent-pattern
+                      (quote ,(plist-get properties :indent)))
+                (cons 'simple-wiki-definition-pattern
+                      (quote ,(plist-get properties :deflist)))
+                (cons 'simple-wiki-outline-patterns
+                      (quote ,(plist-get properties :outline)))))
+        (when (cdr pair)
+          (set (make-local-variable (car pair)) (cdr pair))))
 
       (unless (equal simple-wiki-outline-patterns 'none)
         (setq outline-regexp (car simple-wiki-outline-patterns))
         (setq outline-heading-end-regexp (cdr simple-wiki-outline-patterns)))
-
-      ;; (set (make-local-variable 'simple-wiki-tag-history) nil)
 
       (define-key ,(intern (concat "simple-" (symbol-name mode) "-mode-map"))
         "\C-c\C-e" 'simple-wiki-insert-emph)
