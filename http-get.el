@@ -3,7 +3,8 @@
 ;; Copyright (C) 2002, 2003 Alex Schroeder
 
 ;; Author: Alex Schroeder <alex@gnu.org>
-;; Version: 1.0.3
+;;         Pierre Gaston <pierre@gaston-karlaouzou.com>
+;; Version: 1.0.8
 ;; Keywords: hypermedia
 ;; URL: http://www.emacswiki.org/cgi-bin/wiki.pl?HttpGet
 
@@ -30,6 +31,10 @@
 ;; Use `http-get' to download an URL.
 
 ;;History
+;; 1.0.8
+;;  -- rewrote the parser
+;;  -- correction to the http1.0 usage
+;;
 ;; 1.0.3
 ;;  -- move http-url-encode from http-post.el to http-get.el
 ;;  -- add a param to http-get to specify the encoding of the params in the url
@@ -38,7 +43,7 @@
 
 (require 'hexl)
 
-(defvar http-get-version "1.0.3")
+(defvar http-get-version "1.0.8")
 
 
 ;;Proxy
@@ -50,37 +55,39 @@
 
 ;; Filtering
 
-(defvar  http-filter-pre-insert-hook '(http-1-1-parser)
+(defvar  http-filter-pre-insert-hook '(http-parser)
   "Hook run by the `http-filter'.
 This is called whenever a chunk of input arrives, before it is
 inserted into the buffer.  If you want to modify the string that gets
 inserted, modify the variable `string' which is dynamically bound to
 what will get inserted in the end.  The string will be inserted at
-the process-mark, which you can get by calling \(process-mark proc).
+the `process-mark', which you can get by calling \(process-mark proc).
 `proc' is dynamically bound to the process, and the current buffer
-is the very buffer where the string will be inserted. Note that if 
-you use http/1.1 you probably want to leave  http-1-1-parser
+is the very buffer where the string will be inserted.  Note that if
+you use http/1.1 you probably want to leave  `http-1-1-parser'
 as the first hook as it remove headers and unchunk the file you request"
 )
 
 (defvar http-filter-post-insert-hook  nil
   "Hook run by the `http-filter'.
 This is called whenever a chunk of input arrives, after it has been
-inserted, but before the process-mark has moved.  Therefore, the new
-text lies between the process-mark and point.  You can get the value
+inserted, but before the `process-mark' has moved.  Therefore, the new
+text lies between the `process-mark' and point.  You can get the value
 s
-of the process-mark by calling \(process-mark proc).  Please take care
+of the `process-mark' by calling \(process-mark proc).  Please take care
 to leave point at the right place, eg.  by wrapping your code in a
 `save-excursion'.")
 
 (defun http-filter (proc string)
   "Filter function for HTTP buffers.
 See `http-filter-pre-insert-hook' and `http-filter-post-insert-hook'
-for places where you can do your own stuff such as HTML rendering."
+for places where you can do your own stuff such as HTML rendering.
+Argument PROC the proccess that is filtered.
+Argument STRING The string outputed bythe process."
   (with-current-buffer (process-buffer proc)
     (let ((moving (= (point) (process-mark proc))))
       (save-excursion
-	" Insert the text, advancing the process marker." 
+	" Insert the text, advancing the process marker."
 	(goto-char (process-mark proc))
 	(run-hooks 'http-filter-pre-insert-hook)
 	(insert string)
@@ -95,7 +102,7 @@ for places where you can do your own stuff such as HTML rendering."
 
 
 
-;; Dealing with 
+;; Dealing with
 (defvar http-status-code nil
   "The status code returned for the current buffer.
 This is set by the function `http-headers'.")
@@ -109,34 +116,34 @@ This is set by the function `http-headers'.")
 The headers are stored as an alist.
 This is set by the function `http-headers'.")
 
-(defvar  http-parser-state nil
-  "parser status") 
-
+(defvar  http-parser-state 'status-line
+  "Parser status.")
+(make-local-variable 'http-parser-state)
 
 (defvar http-unchunk-chunk-size  0
   "Size of the current unfinished chunk.")
 (make-local-variable 'http-unchunk-size)
-(defvar not-yet-parsed  ""
-  "received bytes that have not yet been parsed")
-(make-local-variable 'not-yet-parsed)			      
+(defvar http-not-yet-parsed  ""
+  "Received bytes that have not yet been parsed.")
+(make-local-variable 'http-not-yet-parsed)
 
-(defun http-1-1-parser ()
-  "simple parser for http1.1 message. Parse the status line, headers and
-chunk"
-  (when http-parser-state
-    ;; because simple-wiki-mode derived from text mode that kills all local variable
-    ;;we must make http-parser-state local here
-  (unless (local-variable-p http-parser-state )
-    (set (make-local-variable 'http-parser-state) http-parser-state))
-  (let ((parsed-string (concat not-yet-parsed string )))
+(defun http-parser ()
+  "Simple parser for http message.
+Parse the status line, headers and chunk"
+  (let ((parsed-string (concat http-not-yet-parsed string )))
     (setq string "")
-    (setq not-yet-parsed "")
+    (setq http-not-yet-parsed "")
     (while (> (string-bytes parsed-string) 0)
-      (cond 
+      (cond
        ((eq http-parser-state 'status-line)
+	;;make variable of parsers local
+	;;we should do this because of various kill-all-local-variable
+	(make-local-variable 'http-parser-state)
+	(make-local-variable 'http-not-yet-parsed)
+	(make-local-variable 'http-unchunk-size)
 	;;parsing status line
 	(if (string-match "HTTP/[0-9.]+ \\([0-9]+\\) \\(.*\\)\r\n" parsed-string)
-	    (progn 
+	    (progn
 	      (set (make-local-variable 'http-status-code)
 		   (string-to-number (match-string 1 parsed-string)))
 	      (set (make-local-variable 'http-reason-phrase)
@@ -145,16 +152,16 @@ chunk"
 	      (setq parsed-string (substring parsed-string (match-end 0)))
 	      )
 	  ;; status line not found
-	    (setq not-yet-parsed parsed-string)
+	    (setq http-not-yet-parsed parsed-string)
 	    (setq parsed-string "")
 	  )
 	)
-       ((eq http-parser-state 'header) 
+       ((eq http-parser-state 'header)
 	;;parsing headers
 	(if (string-match "\r\n\r\n" parsed-string)
 	    (let ((end-headers (match-end 0)))
 	      (set (make-local-variable 'http-headers) (http-parse-headers (substring parsed-string 0 (match-beginning 0))))
-	      (if (string= "chunked" 
+	      (if (string= "chunked"
 			   (cdr (assoc "Transfer-Encoding" http-headers)))
 		  (setq http-parser-state 'chunked)
 		(setq http-parser-state 'dump)
@@ -162,14 +169,14 @@ chunk"
 	      (setq parsed-string (substring parsed-string end-headers))
 	      )
 	  ;;we don't have all the headers yet
-	  (setq not-yet-parsed parsed-string)
+	  (setq http-not-yet-parsed parsed-string)
 	  (setq parsed-string "")
 	  )
 	)
        ((eq http-parser-state 'chunked)
 	;; parsing chunked content
 	(if (> (string-bytes parsed-string) http-unchunk-chunk-size  )
-	    (progn 
+	    (progn
 	      (setq string  (concat string (substring parsed-string 0 http-unchunk-chunk-size)))
 	      (setq parsed-string (substring parsed-string http-unchunk-chunk-size))
 	      (setq http-unchunk-chunk-size 0)
@@ -178,14 +185,14 @@ chunk"
 		  (if (> (setq http-unchunk-chunk-size (hexl-hex-string-to-integer (match-string 1 parsed-string)))
 			 0)
 		      (setq parsed-string (substring parsed-string (match-end 2)))
-		    ;; chunk 0 found we just burry it 
+		    ;; chunk 0 found we just burry it
 		    (setq parsed-string "")
 		    (setq http-parser-state 'trailer)
 		    ;;dirty=FIXME : we delete the process
 		    (delete-process proc)
 		    )
 		      ;;we don't have the next chunk-size yet
-		(setq not-yet-parsed parsed-string)
+		(setq http-not-yet-parsed parsed-string)
 		(setq parsed-string "")
 		)
 	      )
@@ -206,11 +213,12 @@ chunk"
        )
       )
     )
-  ) 
   )
+ 
 
 (defun http-parse-headers (header-string)
-  "parse the header string"
+  "Parse the header string.
+Argument HEADER-STRING A string containing a header list."
   (let ((lines-list (split-string header-string "\r\n")))
     (mapcar (lambda (line)
 	      (if (string-match ": " line)
@@ -306,17 +314,17 @@ use `decode-coding-region' and get the coding system to use from
   (let* (host dir file port proc buf command start-line (message-headers "") )
     (unless (string-match "http://\\([^/]+\\)/\\(.*/\\)?\\([^:]*\\)\\(:\\([0-9]+\\)\\)?" url)
       (error "Cannot parse URL %s" url))
-    (unless bufname (setq bufname 
+    (unless bufname (setq bufname
 			  (format "*HTTP GET %s *" url)))
     (setq host (match-string 1 url)
 	  dir (or (match-string 2 url) "")
 	  file (or (match-string 3 url) "")
 	  port (or (match-string 5 url) 80)
 	  buf (get-buffer-create bufname)
-	  proc 
-	  (open-network-stream 
-	   (concat "HTTP GET " url) buf 
-	   (if http-proxy-host http-proxy-host host) 
+	  proc
+	  (open-network-stream
+	   (concat "HTTP GET " url) buf
+	   (if http-proxy-host http-proxy-host host)
 	   (if http-proxy-port http-proxy-port port) ))
     (if sentinel
 	(set-buffer buf)
@@ -325,34 +333,20 @@ use `decode-coding-region' and get the coding system to use from
     (kill-all-local-variables)
     (if content-type
 	(setq file
-	      (replace-regexp-in-string 
-	       "=[^&]+" 
-	       (lambda (param) 
-		 (concat "=" 
+	      (replace-regexp-in-string
+	       "=[^&]+"
+	       (lambda (param)
+		 (concat "="
 			 (http-url-encode (substring param 1) content-type)
 			 ))
 	       file
 	       )
 	      )
       )
-    (cond ((= version 1.0)
-	   (setq start-line (format "GET %s%s%s" (if http-proxy-host
-						     (concat "http://" host "/")						   "/") dir file))
-	    (setq http-parser-state nil)
-	    )
-	  ((= version 1.1)
-	   (setq start-line (format "GET %s%s%s HTTP/1.1\r\nHost: %s"
-				    (if http-proxy-host
-					(concat "http://" host "/")
-				      "/") dir file host))
-	   (setq http-parser-state 'status-line)
-	   (message (format "state :%S" http-parser-state))
-	   )
-
-
-	  (t
-	   (error "HTTP Version %S is not supported" version)))
-
+    (setq start-line
+	  (concat (format "GET %s%s%s HTTP/%.1f\r\n" (if http-proxy-host
+						     (concat "http://" host "/")						   "/") dir file version)
+		  (format "Host: %s\r\n" host)))  
     (when headers
       (setq message-headers (mapconcat (lambda (pair)
 					 (concat (car pair) ": " (cdr pair)))
@@ -361,7 +355,7 @@ use `decode-coding-region' and get the coding system to use from
     (setq command (format "%s\r\n%s\r\n" start-line message-headers))
     (http-log (format "Connecting to %s %d\nCommand:\n%s\n" host port command))
     (set-process-sentinel proc (or sentinel 'ignore))
-    (set-process-coding-system proc 'binary) ; we need \r\n in the headers!
+    (set-process-coding-system proc 'binary 'binary) ; we need \r\n in the headers!
     (set-process-filter proc 'http-filter)
     (set-marker (process-mark proc) (point-max))
     (process-send-string proc command)

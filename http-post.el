@@ -3,8 +3,9 @@
 ;; Copyright (C) 2002, 2003  Alex Schroeder
 
 ;; Author: Alex Schroeder <alex@gnu.org>
-;; Maintainer: Alex Schroeder <alex@gnu.org>
-;; Version: 1.0.3
+
+;; Maintainer: Pierre Gaston <pierre@gaston-karlaouzou.com>
+;; Version: 1.0.4
 ;; Keywords: hypermedia
 ;; URL: http://www.emacswiki.org/cgi-bin/wiki.pl?HttpPost
 
@@ -93,7 +94,7 @@ distinguish between \\r and \\n.  To correctly decode the text later,
 use `decode-coding-region' and get the coding system to use from
 `http-headers'."
   (interactive)
-  (setq version (or version 1.1))
+  (setq version (or version 1.0))
   (let* (host dir file port proc buf header body content-length)
     (unless (string-match
 	     "http://\\([^/]+\\)/\\(.*/\\)?\\([^:]*\\)\\(:\\([0-9]+\\)\\)?"
@@ -107,7 +108,7 @@ use `decode-coding-region' and get the coding system to use from
 	  proc (open-network-stream (concat "HTTP POST " url)
 				    buf (if http-proxy-host http-proxy-host host) (if http-proxy-port http-proxy-port port)))
     (set-process-sentinel proc 'ignore)
-    (set-process-coding-system proc 'binary); we need \r\n in the headers!
+    (set-process-coding-system proc 'binary 'binary); we need \r\n in the headers!
     (set-process-filter proc 'http-filter)
     (set-marker (process-mark proc) (point-min) buf)
     (if sentinel
@@ -115,6 +116,7 @@ use `decode-coding-region' and get the coding system to use from
       (switch-to-buffer buf))
     (erase-buffer)
     (kill-all-local-variables)
+    
     (let (result)
       (dolist (param parameters)
 	(setq result (cons (concat (car param) "="
@@ -122,14 +124,15 @@ use `decode-coding-region' and get the coding system to use from
 						    content-type))
 			   result)))
       (setq body (mapconcat 'identity result "&")))
+   
     (setq header
-	  (concat (format "POST %s%s%s HTTP/%.1f\n" (if http-proxy-host
+	  (concat (format "POST %s%s%s HTTP/%.1f\r\n" (if http-proxy-host
 						     (concat "http://" host "/")						   "/") dir file version)
-		  (format "Host: %s\n" host)
+		  (format "Host: %s\r\n" host)
 		  "Content-Type: application/x-www-form-urlencoded"
-		  (format "; charset=%s\n"
+		  (format "; charset=%s\r\n"
 			  (upcase (symbol-name content-type)))
-		  (format "Content-Length: %d\n" (length body))
+		  (format "Content-Length: %d\r\n" (length body))
 		  "\r\n"))
     (when verbose
       (insert header body "\n\n"))

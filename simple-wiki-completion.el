@@ -6,7 +6,7 @@
 ;; Package: simple-wiki-completion
 ;; Author: D. Goel <deego@glue.umd.edu>
 ;; Keywords:
-;; Version: 1.0.7
+;; Version: 1.0.8
 ;; Author's homepage: http://gnufans.net/~deego
 ;; For latest version:
 (defconst simple-wiki-completion-home-page
@@ -41,7 +41,10 @@
 ;; http://www.emacswiki.org/elisp/index.html
 
 
+
 ; change
+;;1.08 
+;; - put back completion with w3m
 ;;1.07
 ;; -change to swc-browse so that it is more flexible (Todo completion on nicknmae)
 ;; -added Pierre Gaston wiki 
@@ -159,7 +162,8 @@ Is a list of the form
 	  (split-string 
 	   (buffer-string)))
        ;; get rid of thebuffer
-    (kill-buffer (process-buffer proc))))
+    (kill-buffer (process-buffer proc))
+     pages))
 
 
 (defun swc-pages-get-w3m  (refpage &optional http-version)
@@ -253,6 +257,15 @@ Not to be confused with `swc-pages'
 (defun swc-oddmuse-browse  ()
   (interactive)
     (swc-browse "om")
+    )
+
+(defun swc-octave-browse  ()
+  (interactive)
+    (swc-browse "octave")
+    )
+(defun swc-fsedu-browse  ()
+  (interactive)
+    (swc-browse "fsedu")
     )
 
 (defun swc-pierre-browse  ()

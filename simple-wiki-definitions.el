@@ -1,12 +1,12 @@
 ;;; simple-wiki-definitions.el ---
 
-;; Copyright (C) 2003 Pierre Gaston
+;; Copyright (C) 2003 D. Goel
 ;; Emacs Lisp Archive entry
 ;; Filename: simple-wiki-definitions.el
 ;; Package: simple-wiki
 ;
 ;; Keywords:
-;; Version: 1.0.0
+;; Version: 1.0.1
 
 
 
@@ -41,19 +41,34 @@
 	  "?action=rc&raw=1"
 	  1.1
 	  swd-usemod-wiki-save)
-			( "om" 
+        ( "om" 
 	  "http://www.emacswiki.org/cgi-bin/oddmuse.pl"
 	  "?action=browse&raw=2&id="
 	  "?action=index&raw=1"
 	  "?action=rc&raw=1"
 	  1.1
 	  swd-usemod-wiki-save)
-	  ( "pierre" 
-	  "http://www.initialsdc.net/cgi-bin/wiki.pl"
+	 ( "octave" 
+	  "http://gnufans.net/octave.pl"
 	  "?action=browse&raw=2&id="
 	  "?action=index&raw=1"
 	  "?action=rc&raw=1"
 	  1.0
+	  swd-usemod-wiki-save)
+	 ( "fsedu" 
+	  "http://gnufans.net/fsedu.pl"
+	  "?action=browse&raw=2&id="
+	  "?action=index&raw=1"
+	  "?action=rc&raw=1"
+	  1.0
+	  swd-usemod-wiki-save)
+
+	  ( "pierre" 
+	  "http://pierre.gaston-karlaouzou.com/cgi-bin/en-pierre.pl"
+	  "?action=browse&raw=2&id="
+	  "?action=index&raw=1"
+	  "?action=rc&raw=1"
+	  1.1
 	  swd-usemod-wiki-save)
  )
 "\
@@ -66,7 +81,6 @@ the fifth is the possible parameters to view recentchanges
 the sixth is the version of the http-protocol to use 
 the seventh is the save function to use for this wiki 
 ")
-
 
 
 (defcustom swd-user-name nil
@@ -87,12 +101,13 @@ the seventh is the save function to use for this wiki
 		   (setq swc-summary-default
 			 (read-from-minibuffer "Summary: " "*")))
 	     '("raw" . "2")
-	     (cons "username" 
+	      (cons "username" 
 		   (or swd-user-name
 		       (apply 'concat (split-string user-full-name))))
 	     (cons "text" (buffer-string))
 	     (cons "recent_edit" (simple-wiki-minor-value)))
-       simple-wiki-content-type)))
+       simple-wiki-content-type 
+      (swd-http-version (swd-nick simple-wiki-url)))))
     (simple-wiki-edit-mode)
     (set (make-local-variable 'simple-wiki-url) url)
     (set (make-local-variable 'simple-wiki-save-function) save-func)))
