@@ -122,7 +122,7 @@ Is a list of the form
       (push (list nick pageslist) swc-pages))))
 
 (defcustom swc-pages-get-function 'swc-pages-get-http-get
-  "try swc-pages-get-w3m if you prefer w3m."
+  "Try `swc-pages-get-w3m' if you prefer w3m."
   :group 'simple-wiki)
 
 (defun swc-pages-get-http-get (refpage &optional http-version)
@@ -204,7 +204,7 @@ Not to be confused with `swc-pages'")
 	 (swc-tmp-pages (mapcar 'car pages)))
      (if (not page)
 	 (setq page (completing-read "Page: " pages)))
-     (simple-wiki-edit 
+     (simple-wiki-edit
       (concat 
        (swd-base-url nick)
        (swd-additional-parameters nick)

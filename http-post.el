@@ -4,7 +4,7 @@
 
 ;; Author: Alex Schroeder <alex@gnu.org>
 ;; Maintainer: Pierre Gaston <pierre@gaston-karlaouzou.com>
-;; Version: 1.0.3
+;; Version: 1.0.4
 ;; Keywords: hypermedia
 ;; URL: http://www.emacswiki.org/cgi-bin/wiki.pl?HttpPost
 
@@ -42,12 +42,8 @@
 
 (require 'http-get)
 
-(defvar http-post-version "1.0.3")
+(defvar http-post-version "1.0.4")
 
-
-
-;; (http-url-encode "Alex" 'iso-8859-1)
-;; (http-url-encode "Alex\nSchröder" 'iso-8859-1)
 
 ;; The main function
 

@@ -51,6 +51,8 @@
 ;; in pre emacs 21 or xemacs.
 ;; "\\<[A-Z\xc0-\xde]+[a-z\xdf-\xff]+\\([A-Z\xc0-\xde]+[a-z\xdf-\xff]*\\)+\\>"
 
+(require 'font-lock)
+
 (defconst simple-wiki-link-pattern
   "\\<\\([A-Z]+?[[:lower:][:nonascii:]]+?[A-Z][[:lower:][:upper:]]*\\)"
   "The pattern used for finding camel case links.")

@@ -75,7 +75,7 @@
 (require 'http-get)
 (require 'simple-wiki)
 
-(defvar simple-wiki-edit-version "1.0.11")
+(defvar simple-wiki-edit-version "1.0.13")
 
 (defvar simple-wiki-url nil
   "The URL of the current buffer.")

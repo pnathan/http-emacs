@@ -4,8 +4,9 @@
 
 ;; Author: Alex Schroeder <alex@gnu.org>
 ;;         Pierre Gaston <pierre@gaston-karlaouzou.com>
+;;         David Hansen <david.hansen@physik.fu-berlin.de>
 ;; Maintainer: Pierre Gaston <pierre@gaston-karlaouzou.com>
-;; Version: 1.0.12
+;; Version: 1.0.14
 ;; Keywords: hypermedia
 ;; URL: http://www.emacswiki.org/cgi-bin/wiki.pl?HttpGet
 
@@ -33,6 +34,8 @@
 
 ;;; Change log:
 
+;; 1.0.14
+;;   - Removed attempt to fix bug in 1.0.12, not needed anymore since 1.0.13.
 ;; 1.0.13
 ;;   - The string is now not anymore decoded in the http-filter.
 ;;     You have to run `http-decode' yourself.
@@ -61,7 +64,7 @@
 
 (require 'hexl)
 
-(defvar http-get-version "1.0.13")
+(defvar http-get-version "1.0.14")
 
 ;; Proxy
 (defvar http-proxy-host nil
@@ -74,7 +77,6 @@
 (defvar http-coding 'iso-8859-1
    "Default coding to be use when the string is inserted in the buffer.
 This coding will be modified on Finding the content-type header")
-(make-local-variable 'http-coding)
 
 ;; Filtering
 (defvar  http-filter-pre-insert-hook '(http-parser)
@@ -92,7 +94,7 @@ is the very buffer where the string will be inserted.")
 This is called whenever a chunk of input arrives, after it has been
 inserted, but before the `process-mark' has moved.  Therefore, the new
 text lies between the `process-mark' and point.  You can get the values
-of the `process-mark' by calling \(process-mark proc).  Please take care
+of the `process-mark' by calling (process-mark proc).  Please take care
 to leave point at the right place, eg.  by wrapping your code in a
 `save-excursion'.")
 
@@ -110,12 +112,7 @@ Argument STRING The string outputed byte process."
 	" Insert the text, advancing the process marker."
 	(goto-char (process-mark proc))
 	(run-hooks 'http-filter-pre-insert-hook)
-        ;; it may be a problem if we only got a 'half' multi byte char
-        ;; the http-parser should now take care that the string contains
-        ;; only full chunks
-        ;; FIXME: i doubt this is enough.
-        ;; (insert (decode-coding-string string http-coding))
-        ;; (insert (decode-coding-string string 'binary))
+        ;; Note: the string is inserted binary in a unibyte buffer
         (insert string)
 	(run-hooks 'http-filter-post-insert-hook)
 	(set-marker (process-mark proc) (point)))
@@ -138,30 +135,27 @@ This is set by the function `http-headers'.")
 
 (defvar  http-parser-state 'status-line
   "Parser status.")
-(make-local-variable 'http-parser-state)
 
 (defvar http-unchunk-chunk-size  0
   "Size of the current unfinished chunk.")
-(make-local-variable 'http-unchunk-chunk-size)
 
 (defvar http-not-yet-parsed  ""
   "Received bytes that have not yet been parsed.")
-(make-local-variable 'http-not-yet-parsed)
 
 
 (defun http-parser ()
   "Simple parser for http message.
-Parse the status line, headers and chunk"
+Parse the status line, headers and chunk."
   (let ((parsed-string (concat http-not-yet-parsed string)) content-type)
     (setq string "")
     (setq http-not-yet-parsed "")
-    ;; (while (> (string-bytes parsed-string) 0)
     (while (> (length parsed-string) 0)
       (cond
 
        ((eq http-parser-state 'status-line)
 	;; make variable of parsers local
-	;; we should do this because of various kill-all-local-variable
+        ;; FIXME: do we really need this?  why?  wouldn't it be better
+        ;; to `make-variable-buffer-local'?
 	(make-local-variable 'http-parser-state)
 	(make-local-variable 'http-not-yet-parsed)
 	(make-local-variable 'http-unchunk-chunk-size)
@@ -204,7 +198,6 @@ Parse the status line, headers and chunk"
 
        ((eq http-parser-state 'chunked)
 	;; parsing chunked content
-        ;; (if (> (string-bytes parsed-string) http-unchunk-chunk-size)
         (if (> (length parsed-string) http-unchunk-chunk-size)
 	    (progn
 	      (setq string (concat string
@@ -229,21 +222,14 @@ Parse the status line, headers and chunk"
 		(setq http-not-yet-parsed parsed-string)
 		(setq parsed-string "")))
 	  ;; the current chunk is not finished yet
-          ;;
-          ;; Don't insert the not finished chunk yet.  It may end with a
-          ;; half multi byte character.
-          ;;
-	  ;; (setq string  (concat string parsed-string))
-	  ;; (setq http-unchunk-chunk-size
-          ;;       ;; (- http-unchunk-chunk-size (string-bytes parsed-string)))
-          ;;       (- http-unchunk-chunk-size (length parsed-string)))
-          ;;
-          (setq http-not-yet-parsed parsed-string)
-	  (setq parsed-string "")))
+	  (setq string  (concat string parsed-string))
+	  (setq http-unchunk-chunk-size
+                (- http-unchunk-chunk-size (length parsed-string)))
+          (setq parsed-string "")))
 
        ((eq http-parser-state 'trailer)
-	;; parsing trailer
-	(setq  parsed-string ""))
+        ;; parsing trailer
+        (setq  parsed-string ""))
 
        ((eq http-parser-state 'dump)
 	 (setq  string parsed-string)
