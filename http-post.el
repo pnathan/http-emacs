@@ -3,7 +3,6 @@
 ;; Copyright (C) 2002, 2003  Alex Schroeder
 
 ;; Author: Alex Schroeder <alex@gnu.org>
-;; Modified by: D. Goel <deego@gnufans.org>
 ;; Maintainer: Alex Schroeder <alex@gnu.org>
 ;; Version: 1.0.3
 ;; Keywords: hypermedia

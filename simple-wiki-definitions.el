@@ -1,6 +1,6 @@
 ;;; simple-wiki-definitions.el ---
 
-;; Copyright (C) 2003 D. Goel
+;; Copyright (C) 2003 Pierre Gaston
 ;; Emacs Lisp Archive entry
 ;; Filename: simple-wiki-definitions.el
 ;; Package: simple-wiki

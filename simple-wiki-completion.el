@@ -1,5 +1,5 @@
 ;;; simple-wiki-completion.el ---
-;; Time-stamp: <2003-03-02 22:53:34 deego>
+;; Time-stamp: <2003-04-01 09:52:46 deego>
 ;; Copyright (C) 2003 D. Goel
 ;; Emacs Lisp Archive entry
 ;; Filename: simple-wiki-completion.el
