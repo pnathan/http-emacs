@@ -1,5 +1,5 @@
 ;;; simple-wiki-completion.el ---
-;; Time-stamp: <2003-04-12 09:19:11 pgas>
+;; Time-stamp: <2004-11-21 13:50:43 deego>
 ;; Copyright (C) 2003 D. Goel
 ;; Emacs Lisp Archive entry
 ;; Filename: simple-wiki-completion.el
@@ -129,7 +129,10 @@ Is a list of the form
   (let (proc pages headers (progress 60)
              (progress-bar "Building completions: "))
     (when (and http-version (= http-version 1.1))
-      (setq headers '(("Connection" . "close"))))
+      ;;(setq headers '(("Connection" . "close")))
+      (setq headers (append (swd-additional-headers nick)
+			    '(("Connection" . "close"))))
+      )
     (setq proc (http-get refpage headers
                          (lambda (proc message) nil) (swd-http-version nick)))
     ;; wait for the process to end or wait  60 seconds
@@ -191,14 +194,14 @@ Not to be confused with `swc-pages'")
          (page (completing-read "Page: " pages)))
     (simple-wiki-edit
      (simple-wiki-link page) simple-wiki-save-function nil
-     (swd-http-version nick) (swd-http-coding nick))))
+     (swd-http-version nick) (swd-http-coding nick)   
+      (swd-additional-headers nick))))
 
 (defun swc-browse (&optional nick page)
    (interactive)
    (if (not nick)
        (setq nick (read-from-minibuffer "Nickname: ")))
     (make-local-hook 'pre-command-hook)
-
    (let* ((pages (swc-completions-get nick))
 	 (completion-ignore-case simple-wiki-completion-ignore-case)
 	 (swc-tmp-pages (mapcar 'car pages)))

@@ -92,7 +92,15 @@ the fourth is  the possible parameters to view index,
 the fifth is the possible parameters to view recentchanges,
 the sixth is the version of the http-protocol to use,
 the seventh is the save function to use for this wiki,
-the eighth is the encoding")
+the eighth is the encoding
+the ninth contains any additional headers, for example
+     \`((\"Authorization\"  .
+      ,(concat 
+	\"Basic \"
+	(base64-encode-string \"username:password\") )))
+ These headers are passwd directly to http-get, which knows how to
+grok them.  Note that this is distinct from the third field.
+")
 
 
 (defcustom swd-user-name nil
