@@ -12,6 +12,8 @@
 (defconst simple-wiki-completion-home-page
   "http://gnufans.net/~deego")
 
+
+ 
 ;; This file is NOT (yet) part of GNU Emacs.
  
 ;; This is free software; you can redistribute it and/or modify
@@ -61,6 +63,7 @@
 (eval-when-compile (require 'cl))
 (require 'http-get);
 (require 'http-post)
+(require 'simple-wiki-definitions)
 (require 'simple-wiki-edit)
 (require 'simple-wiki)
 
@@ -74,23 +77,7 @@
 (defcustom simple-wiki-completion-ignore-case t
   "" )
 
-(defcustom  swc-wikis
-  '(
-    ("ew"
-     "http://www.emacswiki.org/cgi-bin/wiki.pl?action=browse&raw=2&id="
-     "http://www.emacswiki.org/cgi-bin/wiki.pl?action=index&raw=1"
-     )
-   ("om"
-     "http://www.emacswiki.org/cgi-bin/oddmuse.pl?action=browse&raw=2&id="
-     "http://www.emacswiki.org/cgi-bin/oddmuse.pl?action=index&raw=1"
-     )
-   ("pierre"
-     "http://www.initialsdc.net/cgi-bin/wiki.pl?action=browse&raw=2&id="
-     "http://www.initialsdc.net/cgi-bin/wiki.pl?action=index&raw=1"
-     )
-   
-   )
-  "" )
+
 
 (defvar swc-pages nil
   "Not to be confused with `swc-pages-completion'.
@@ -98,9 +85,7 @@ Is a list of the form
  ((code1 ((pg1) (pg2) (pg3...))  (code2 .....)) "
   )
 
-(defvar swc-nick-current nil
-  "the current nick name, local to a buffer"
-  )
+
 
 ;;redefine the open function to take advantage of completions
 (define-key simple-wiki-edit-mode-map (kbd "C-c C-o") 'swc-open)
@@ -109,23 +94,21 @@ Is a list of the form
 ;; hooks for renaming the buffers  and setting current wiki nickname
 (add-hook 'simple-wiki-edit-mode-hook 'rename-hook)
               
+(defun rename-hook ()
+  (when url
+    (let* ((simple-wiki-url url)
+	   (bufname  (concat 
+		      (upcase (swd-nick simple-wiki-url))
+		      ":" 
+		      (simple-wiki-page))))
+      (if (get-buffer bufname)
+	  (kill-buffer bufname))
+         (rename-buffer bufname)
+	 )
+	 )
+ )
 
-(defun rename-hook () 
-  (set (make-local-variable 'swc-nick-current) nick)
-                (when url
-		  (let* (
-			 (simple-wiki-url url) 
-			 (buffname 
-			  (concat (upcase nick) ":" (simple-wiki-page))
-			  )
-			 )
-		    (if (get-buffer buffname) 
-			(kill-buffer buffname)
-		      )
-		    (rename-buffer buffname)
-		    ) 
-		  )
-)
+
 
 (defun swc-completions-nullify ()
   (interactive)
@@ -143,30 +126,19 @@ Is a list of the form
       (setq tail (cdr tail)))
     )
   ;look for index page associated with nick
-  (let (refpage (wikis  swc-wikis) )
-    (while (and wikis (null refpage))
-	(setq refpage (third (assoc nick swc-wikis)))
-        (setq wikis (cdr wikis))
-	)
+  (let ((refpage (concat (swd-base-url nick) (swd-index-parameters nick))))
   (if (null refpage)
       nil
     (let (proc pages  (progress 60))     
-      (setq proc (http-get refpage nil  'swc-dumb-sentinel  simple-wiki-http-version))
-          (set (make-local-variable 'content) "")
-	  ;;add a hook to force the connection to close
-	 ( if (= simple-wiki-http-version 1.1)
-	  (add-hook 'http-filter-post-insert-hook 'swc-index-filter-hook t t)
-      )
-	;; wait for the process to end
-	;; or wait  60 seconds
-        (while (and (eq (process-status proc) 'open)  (> progress 0))
-	   (sit-for 1)
-	  ;; (setq status  (process-status proc))
-	   (setq progress (1- progress) )
-	   (message (format "Building completion list %d " progress ))
-	  )
-	
-
+      (setq proc (http-get refpage nil  (lambda (proc message) nil) (swd-http-version nick)))     
+      ;; wait for the process to end
+      ;; or wait  60 seconds
+      (while (and (eq (process-status proc) 'open)  (> progress 0))
+	(sit-for 1)
+	;; (setq status  (process-status proc))
+	(setq progress (1- progress) )
+	(message (format "Building completion list %d " progress ))
+	)
 	;;parse the entries
 	(setq pages 
 	      (mapcar
@@ -180,24 +152,8 @@ Is a list of the form
   )
   
 
-(defun swc-dumb-sentinel (proc mess) 
-  "dumb sentinel used only to keep the buffer hidden"
-  ()
-  )
 
-(defun swc-index-filter-hook ()
-  "not really a filter this hook close the connection if the http1.1 transfer
-is not closed"
-  ;;this make the asumptions that connection which are not closed are chunked
-  ;;(setq content (concat content (buffer-substring (process-mark proc) (point))))
-   
-       (unless (string= "close" (cdr (assoc "Connection" http-headers)))
-	 (unless (string= "chunked" (cdr (assoc "Transfer-Encoding" http-headers)))
-	   (delete-process proc)
-	   )
-	 )
-       
-       )
+
 
 
 (defun swc-completions-get (nick)
@@ -206,7 +162,7 @@ is not closed"
     (setq assoced (assoc nick swc-pages))
     (second assoced)))
 
-(defvar swc-nick-current nil)
+
 (defvar swc-savefn-current nil)
 
 (defvar swc-tmp-pages nil "temporary variable. ")
@@ -218,26 +174,34 @@ Not to be confused with `swc-pages'
 (make-variable-buffer-local 'swc-pages-completion)
 
 ;;open redefined to take advantage of the completion
-(defun swc-open (&optional page)
-  "Open a new page on the same wiki."
-  (interactive)
-  (let* ((nick swc-nick-current)
-	 (pages (ignore-errors (swc-completions-get nick)))
+ (defun swc-open (&optional page)
+   "Open a new page on the same wiki."
+   (interactive)
+   (let* ((nick (swd-nick simple-wiki-url))
+ 	 (pages (ignore-errors (swc-completions-get nick)))
 	   (completion-ignore-case simple-wiki-completion-ignore-case)
-	   (page (completing-read "Page: " pages)))
-    (simple-wiki-edit (simple-wiki-link page) simple-wiki-save-function)
+ 	   (page (completing-read "Page: " pages)))
+     (simple-wiki-edit (simple-wiki-link page) simple-wiki-save-function nil (swd-http-version nick))
+     )
    
-   )
-)
-;; follow redefined 
-(defun swc-follow ()
-  (interactive)
-  (let ((nick swc-nick-current))
-       (call-interactively 'simple-wiki-follow)
-  )
-)
+    )
+ 
 
-(defun swc-browse  (&optional nick page)
+(defun swc-follow ()
+  "Follow the WikiName at point."
+  (interactive)
+  (let ((page (word-at-point))
+	(case-fold-search nil)
+	(nick (swd-nick simple-wiki-url)))
+    (if (and page
+	     (string-match
+	      simple-wiki-link-pattern
+	      page))
+	(simple-wiki-edit (simple-wiki-link page) simple-wiki-save-function  nil (swd-http-version nick))
+      (error "No WikiName at point"))))
+
+
+(defun swc-browse ( &optional nick page)
    (interactive)
     (if (not nick)
 	(setq nick (read-from-minibuffer "Nickname :")))
@@ -253,12 +217,16 @@ Not to be confused with `swc-pages'
     
     (simple-wiki-edit 
      (concat 
-      (second (assoc nick swc-wikis))
+      (swd-base-url nick)
+      (swd-additional-parameters nick)
       page)
-     (or swc-savefn-current 'swc-usemod-wiki-save)
+     (swd-save-func nick)
+     nil
+     (swd-http-version nick)
      )
     (setq swc-pages-completion swc-tmp-pages))
   
+
 
 
 ;;;###autoload
@@ -275,7 +243,7 @@ Not to be confused with `swc-pages'
 
 (defun swc-pierre-browse  ()
   (interactive)
-    (swc-browse "moi")
+    (swc-browse "pierre")
      )
 
 
@@ -283,27 +251,7 @@ Not to be confused with `swc-pages'
   "")
 
 
-(defun swc-usemod-wiki-save ()
-  "Save the current page to a UseMod wiki."
-  (let ( (nick swc-nick-current)
-	(url simple-wiki-url)
-	(save-func simple-wiki-save-function))
-    (switch-to-buffer
-     (process-buffer
-      (http-post
-       (simple-wiki-save-link)
-       (list (cons "title" (simple-wiki-page))
-	     (cons "summary" 
-		   (setq swc-summary-default
-			 (read-from-minibuffer "Summary: " "*")))
-	     '("raw" . "2")
-	     (cons "username" (apply 'concat (split-string user-full-name)))
-	     (cons "text" (buffer-string))
-	     (cons "recent_edit" (simple-wiki-minor-value)))
-       simple-wiki-content-type)))
-    (simple-wiki-edit-mode)
-    (set (make-local-variable 'simple-wiki-url) url)
-    (set (make-local-variable 'simple-wiki-save-function) save-func)))
+
 
   
   
