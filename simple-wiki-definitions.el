@@ -7,7 +7,7 @@
 ;; Maintainer: Pierre Gaston <pierre@gaston-karlaouzou.com>
 
 ;; Keywords:
-;; Version: 1.0.4
+;; Version: 1.0.5
  
 ;; This file is NOT (yet) part of GNU Emacs.
  
@@ -26,71 +26,71 @@
 ;; Free Software Foundation, Inc., 59 Temple Place - Suite 330,
 ;; Boston, MA 02111-1307, USA.
 
+;;; ChangeLog:
+
+;;  1.0.5
+;;    - Fixed infinite loop bug in swd-nick
 
 
-(defcustom swd-wiki-defs-list '( 
-	( "ew" 
-	  "http://www.emacswiki.org/cgi-bin/wiki.pl"
-	  "?action=browse&raw=2&id="
-	  "?action=index&raw=1"
-	  "?action=rc&raw=1"
-	  1.1
-	  swd-usemod-wiki-save
-	  utf-8)
-        ( "om" 
-	  "http://www.emacswiki.org/cgi-bin/oddmuse.pl"
-	  "?action=browse&raw=2&id="
-	  "?action=index&raw=1"
-	  "?action=rc&raw=1"
-	  1.1
-	  swd-usemod-wiki-save
-	  utf-8)
-	 ( "octave" 
-	  "http://gnufans.net/octave.pl"
-	  "?action=browse&raw=2&id="
-	  "?action=index&raw=1"
-	  "?action=rc&raw=1"
-	  1.0
-	  swd-usemod-wiki-save
-	  iso-8859-1)
-	 ( "fsedu" 
-	  "http://gnufans.net/fsedu.pl"
-	  "?action=browse&raw=2&id="
-	  "?action=index&raw=1"
-	  "?action=rc&raw=1"
-	  1.0
-	  swd-usemod-wiki-save
-	  iso-8859-1)
-	  ( "pierre" 
-	  "http://pierre.gaston-karlaouzou.com/cgi-bin/en-pierre.pl"
-	  "?action=browse&raw=2&id="
-	  "?action=index&raw=1"
-	  "?action=rc&raw=1"
-	  1.1
-	  swd-usemod-wiki-save
-	  iso-8859-1)
- )
-"\
-defines the wiki you visit
-the first element is the nickname.
-the second is the base url
-the third is possible url parameters to put before the page name
-the fourth is  the possible parameters to view recentchanges
-the fifth is the possible parameters to view recentchanges
-the sixth is the version of the http-protocol to use 
-the seventh is the save function to use for this wiki 
-the eight th encoding
-")
+(defcustom swd-wiki-defs-list
+  '(("ew" 
+     "http://www.emacswiki.org/cgi-bin/wiki.pl"
+     "?action=browse&raw=2&id="
+     "?action=index&raw=1"
+     "?action=rc&raw=1"
+     1.1
+     swd-usemod-wiki-save
+     utf-8)
+    ("om" 
+     "http://www.emacswiki.org/cgi-bin/oddmuse.pl"
+     "?action=browse&raw=2&id="
+     "?action=index&raw=1"
+     "?action=rc&raw=1"
+     1.1
+     swd-usemod-wiki-save
+     utf-8)
+    ("octave" 
+     "http://gnufans.net/octave.pl"
+     "?action=browse&raw=2&id="
+     "?action=index&raw=1"
+     "?action=rc&raw=1"
+     1.0
+     swd-usemod-wiki-save
+     iso-8859-1)
+    ("fsedu" 
+     "http://gnufans.net/fsedu.pl"
+     "?action=browse&raw=2&id="
+     "?action=index&raw=1"
+     "?action=rc&raw=1"
+     1.0
+     swd-usemod-wiki-save
+     iso-8859-1)
+    ("pierre" 
+     "http://pierre.gaston-karlaouzou.com/cgi-bin/en-pierre.pl"
+     "?action=browse&raw=2&id="
+     "?action=index&raw=1"
+     "?action=rc&raw=1"
+     1.1
+     swd-usemod-wiki-save
+     iso-8859-1))
+  "Defines the wiki you visit:
+the first element is the nickname,
+the second is the base url,
+the third is possible url parameters to put before the page name,
+the fourth is  the possible parameters to view recentchanges,
+the fifth is the possible parameters to view recentchanges,
+the sixth is the version of the http-protocol to use,
+the seventh is the save function to use for this wiki,
+the eighth the encoding")
 
 
 (defcustom swd-user-name nil
   "Set this to override your system username")
 
-;;save functions
+;; save functions
 (defun swd-usemod-wiki-save ()
   "Save the current page to a UseMod wiki."
-  (let ( 
-	(url simple-wiki-url)
+  (let ((url simple-wiki-url)
 	(save-func simple-wiki-save-function))
     (switch-to-buffer
      (process-buffer
@@ -101,62 +101,51 @@ the eight th encoding
 		   (setq swc-summary-default
 			 (read-from-minibuffer "Summary: " "*")))
 	     '("raw" . "2")
-	      (cons "username" 
+             (cons "username" 
 		   (or swd-user-name
 		       (apply 'concat (split-string user-full-name))))
 	     (cons "text" (buffer-string))
 	     (cons "recent_edit" (simple-wiki-minor-value)))
        (swd-http-coding (swd-nick simple-wiki-url))
-      (swd-http-version (swd-nick simple-wiki-url)))))
+       (swd-http-version (swd-nick simple-wiki-url)))))
     (simple-wiki-edit-mode)
     (set (make-local-variable 'simple-wiki-url) url)
     (set (make-local-variable 'simple-wiki-save-function) save-func)))
 
 
-;;various utility function
+;; various utility function
 (defun swd-nick (url) 
-  (let  
-      ((url-base (if (string-match "\\([^?]+\\)" url) (match-string 1 url)))
-	 (wiki-defs-list swd-wiki-defs-list)
-	 (nick nil)
-	 )
+  (let ((url-base (if (string-match "\\([^?]+\\)" url) (match-string 1 url)))
+        (wiki-defs-list swd-wiki-defs-list)
+        (nick nil))
     (if url-base
-	(while (or wiki-defs-list (not nick))
+	(while (and wiki-defs-list (not nick))
 	  (if (equal (cadar wiki-defs-list) url-base)
 	      (setq nick (caar wiki-defs-list)))
-	  (setq wiki-defs-list (cdr wiki-defs-list)))
-      )
-    nick
-    ))
+	  (setq wiki-defs-list (cdr wiki-defs-list))))
+    nick))
 
 
-(defun swd-base-url (nick)  
-  (second (assoc nick swd-wiki-defs-list))
-  )	
+(defun swd-base-url (nick)
+  (second (assoc nick swd-wiki-defs-list)))
 
 (defun swd-additional-parameters (nick)
-  (third (assoc nick swd-wiki-defs-list))
-  )
+  (third (assoc nick swd-wiki-defs-list)))
 
 (defun swd-index-parameters (nick)
-  (fourth  (assoc nick swd-wiki-defs-list))
-  )
+  (fourth (assoc nick swd-wiki-defs-list)))
 
 (defun swd-rc-ptarameters (nick)
-  (fifth (assoc nick swd-wiki-defs-list))
-  )
+  (fifth (assoc nick swd-wiki-defs-list)))
 
 (defun swd-http-version (nick)
-  (sixth  (assoc nick swd-wiki-defs-list))
-  )
+  (sixth (assoc nick swd-wiki-defs-list)))
 
 (defun swd-http-coding (nick)
-  (eighth  (assoc nick swd-wiki-defs-list))
-  )
+  (eighth (assoc nick swd-wiki-defs-list)))
 
 (defun swd-save-func (nick)
-  (seventh  (assoc nick swd-wiki-defs-list))
-  )
+  (seventh (assoc nick swd-wiki-defs-list)))
 
 (provide 'simple-wiki-definitions)
 

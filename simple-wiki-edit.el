@@ -4,7 +4,7 @@
 
 ;; Author: Alex Schroeder <alex@gnu.org>
 ;; Maintainer: Pierre Gaston <pierre@gaston-karlaouzou.com>
-;; Version: 1.0.7
+;; Version: 1.0.8
 ;; Keywords: hypermedia
 ;; URL: http://www.emacswiki.org/cgi-bin/wiki.pl?SimpleWikiEditMode
 
@@ -33,23 +33,26 @@
 
 ;; If your auto-fill-mode is usually on, you might want to turn it off
 ;; Also consider using longlines.el
-;; (defvar simple-wiki-edit-mode-hooks)
-;; (add-hook 'simple-wiki-edit-mode-hooks 'turn-off-auto-fill)
-;; (add-hook 'simple-wiki-edit-mode-hooks
+;; (add-hook 'simple-wiki-edit-mode-hook 'turn-off-auto-fill)
+;; (add-hook 'simple-wiki-edit-mode-hook
 ;;    'simple-wiki-delayed-longlines-mode-on)
 ;; (add-hook 'simple-wiki-save-before-hooks 'longlines-mode-off)
 ;; in which case, also customize simple-wiki-fill-column back to 70
-;; using pcomplete within the page: 
+;; using pcomplete within the page:
 ;;  (add-hook 'simple-wiki-edit-mode-hooks  'pcomplete-simple-wiki-setup)
 ;; and thereafter, use  C-/ to pcomplete pages at point and M-/ for
 ;; dabbrev-compltion 
 ;; Consider also (setq pcomplete-ignore-case t)
 
-;; change
-;;1.07 
-;;  -added simple-wiki-content-type
-;;1.06
-;;  - added  simple-wiki-http-version 1.1 
+;;; ChaneLog:
+
+;; 1.0.8
+;;   - removed all referenced to simple-wiki-edit-mode-hooks and replaced
+;;     them with simple-wiki-edit-mode-hook
+;; 1.0.7
+;;   - added simple-wiki-content-type
+;; 1.0.6
+;;   - added simple-wiki-http-version 1.1
  
 ;;; Code:
 
@@ -78,7 +81,8 @@ pressing C-c C-t during edits.")
 
 (make-variable-buffer-local 'simple-wiki-minor-p)
 
-(defcustom simple-wiki-edit-mode-hooks nil "")
+(defcustom simple-wiki-edit-mode-hook nil
+  "Hook run when entering Wiki-Edit mode.")
 
 (defcustom simple-wiki-save-before-hooks nil "")
 
@@ -93,9 +97,8 @@ pressing C-c C-t during edits.")
 (define-derived-mode simple-wiki-edit-mode simple-wiki-mode "Wiki-Edit"
   "Edit URL using `simple-wiki-mode'.
 
-\\{simple-wiki-edit-mode-map}"
-  (run-hooks 'simple-wiki-edit-mode-hooks)
-  )
+\\{simple-wiki-edit-mode-map}")
+
 
 (define-key simple-wiki-edit-mode-map (kbd "C-c C-c") 'simple-wiki-save)
 (define-key simple-wiki-edit-mode-map (kbd "C-c C-o") 'simple-wiki-open)
@@ -223,13 +226,12 @@ to the first \"?\"."
 
 
 
-
 (defun pcomplete-simple-wiki-setup ()
   (set (make-local-variable 'pcomplete-parse-arguments-function)
    'pcomplete-parse-simple-wiki-arguments)
   (set (make-local-variable 'pcomplete-default-completion-function)
-       'pcomplete-simple-wiki-default-completion)
-  )
+       'pcomplete-simple-wiki-default-completion))
+
 
 
 (defun pcomplete-parse-simple-wiki-arguments ()
@@ -237,7 +239,7 @@ to the first \"?\"."
     (let* ((thispt (point))
 	   (pt (search-backward-regexp "[ \t\n]" nil t))
 	   (ptt (if pt (+ pt 1) thispt)))
-      
+
       (list 
        (list "dummy" (buffer-substring-no-properties ptt thispt))
        (point-min) ptt))))
