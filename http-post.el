@@ -48,7 +48,8 @@
 
 ;; The main function
 
-(defun http-post (url parameters content-type &optional headers sentinel version verbose)
+(defun http-post (url parameters content-type &optional headers sentinel
+                      version verbose bufname)
   "Post to a URL in a buffer using HTTP 1.1, and return the process.
 You can get the buffer associated with this process using 
 `process-buffer'.
@@ -96,17 +97,19 @@ use `decode-coding-region' and get the coding system to use from
   (setq version (or version 1.0))
   (let* (host dir file port proc buf header body content-length)
     (unless (string-match
-	     "http://\\([^/]+\\)/\\(.*/\\)?\\([^:]*\\)\\(:\\([0-9]+\\)\\)?"
+	     "http://\\([^/:]+\\)\\(:\\([0-9]+\\)\\)?/\\(.*/\\)?\\([^:]*\\)"
 	     url)
       (error "Cannot parse URL %s" url))
+    (unless bufname (setq bufname
+			  (format "*HTTP POST %s *" url)))
     (setq host (match-string 1 url)
-	  dir  (or (match-string 2 url) "")
-	  file (or (match-string 3 url) "")
-	  port (or (match-string 5 url) 80)
-	  buf (get-buffer-create (format "*HTTP POST %s *" url))
+	  port (or (and (setq port (match-string 3 url)) (string-to-int port)) 80)
+	  dir  (or (match-string 4 url) "")
+	  file (or (match-string 5 url) "")
+	  buf (get-buffer-create bufname)
 	  proc (open-network-stream (concat "HTTP POST " url)
 				    buf (if http-proxy-host http-proxy-host host) (if http-proxy-port http-proxy-port port)))
-    (set-process-sentinel proc 'ignore)
+    (set-process-sentinel proc (or sentinel 'ignore))
     (set-process-coding-system proc 'binary 'binary); we need \r\n in the headers!
     (set-process-filter proc 'http-filter)
     (set-marker (process-mark proc) (point-min) buf)
