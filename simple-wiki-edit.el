@@ -39,7 +39,7 @@
 ;; (add-hook 'simple-wiki-save-before-hooks 'longlines-mode-off)
 
 ;; using pcomplete within the page:
-;;  (add-hook 'simple-wiki-edit-mode-hooks  'pcomplete-simple-wiki-setup)
+;;  (add-hook 'simple-wiki-edit-mode-hook 'pcomplete-simple-wiki-setup)
 ;; and thereafter, use  C-/ to pcomplete pages at point and M-/ for
 ;; dabbrev-completion
 ;; Consider also (setq pcomplete-ignore-case t)
