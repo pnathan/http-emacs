@@ -232,7 +232,7 @@ Optional SAVE-FUNC is a function to use when saving."
 (defun simple-wiki-follow ()
   "Follow the WikiName at point."
   (interactive)
-  (let (page (simple-wiki-link-at-point))
+  (let ((page (simple-wiki-link-at-point)))
     (if page
         (simple-wiki-edit (simple-wiki-link page)
                           simple-wiki-save-function
