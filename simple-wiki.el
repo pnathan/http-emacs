@@ -5,7 +5,7 @@
 ;; Author: Alex Schroeder <alex@gnu.org>
 ;;         David Hansen <david.hansen@physik.fu-berlin.de>
 ;; Maintainer: David Hansen <david.hansen@physik.fu-berlin.de>
-;; Version: 1.0.7
+;; Version: 1.0.8
 ;; Keywords: hypermedia
 ;; URL: http://www.emacswiki.org/cgi-bin/wiki.pl?SimpleWikiEditMode
 
@@ -36,6 +36,8 @@
 
 ;;; Change Log:
 
+;; 1.0.8
+;;   - Added `simple-phpwiki-mode' and `simple-mediawiki-mode'
 ;; 1.0.7
 ;;   - moved `simple-wiki-next' and `simple-wiki-prev' here
 ;;   - Renamed -regexps to -patterns.
@@ -61,7 +63,7 @@
 
 (require 'font-lock)
 
-(defvar simple-wiki-version "1.0.7")
+(defvar simple-wiki-version "1.0.8")
 
 
 
@@ -69,10 +71,11 @@
 
 (defvar simple-wiki-tag-list
   ;; xemacs requires an alist for `completing-read'.  the cdr is not used.
-  '(("u" . t) ("b" . t) ("i" . t) ("strong" . t) ("em" . t)
-    ("nowiki" . t) ("code" . t) ("tt" . t) ("pre". t))
+  '(("u" . nil) ("b" . nil) ("i" . nil) ("strong" . nil) ("em" . nil)
+    ("nowiki" . nil) ("code" . nil) ("tt" . nil) ("pre". t))
   "Alist of supported tags used for `completing-read'.
-The cdr of a pair has no meaning at the time.")
+The cdr of a pair is non-nil if a newline should be inserted after the
+opening tag.")
 
 (if (featurep 'xemacs) ;; xemacs doesn't know character classes
     (defvar simple-wiki-link-pattern
@@ -186,7 +189,6 @@ subexpression.")
    '(simple-wiki-match-tag-nowiki . (0 'simple-wiki-nowiki-face t))
 
    ;; code blocks
-   ;; highlight of <code> and <pre> needs some more sophisticated stuff :(
    '(simple-wiki-match-tag-code . (0 'simple-wiki-code-face t))
    '(simple-wiki-match-tag-pre . (0 'simple-wiki-code-face t))
 
@@ -199,6 +201,7 @@ subexpression.")
 
 (defvar simple-wiki-tag-history nil
   "History for `completing-read' of tags.")
+
 
 
 ;; custom groups
@@ -457,6 +460,9 @@ subexpression.")
   "Font lock matcher for regions within <strike></strike>."
   (simple-wiki-match-tag "strike" limit))
 
+(defun simple-wiki-match-tag-verbatim (limit)
+  "Font lock matcher for regions within <verbatim></verbatim>."
+  (simple-wiki-match-tag "verbatim" limit))
 
 (defun simple-wiki-end-of-code-block ()
   "Return the end of a code block if the cursor is within a code block.
@@ -531,9 +537,14 @@ Return nil otherwise."
       (setq tag (completing-read prompt simple-wiki-tag-list nil nil ""
                                  'simple-wiki-tag-history
                                  (car simple-wiki-tag-history))))
-    (add-to-list 'simple-wiki-tag-list (cons tag t)))
+    (unless (assoc tag simple-wiki-tag-list)
+      (add-to-list 'simple-wiki-tag-list (cons tag nil))))
   (simple-wiki-insert-tag-string tag)
-  (save-excursion (simple-wiki-insert-tag-string tag t)))
+  (save-excursion (simple-wiki-insert-tag-string tag t))
+  (when (and (assoc tag simple-wiki-tag-list)
+             (cdr (assoc tag simple-wiki-tag-list)))
+    (insert "\n")
+    (save-excursion (insert "\n"))))
 
 
 
@@ -758,7 +769,7 @@ Use the symbol 'none as the value if the wiki doesn't support the property."
              (quote ,(plist-get properties :outline))))
 
       (when (quote ,(plist-get properties :linebreak))
-        (set (make-local-variable 'simple-wiki-link-pattern)
+        (set (make-local-variable 'simple-wiki-line-break-pattern)
              (quote ,(plist-get properties :linebreak))))
 
       (when (quote ,(plist-get properties :horiz))
@@ -785,7 +796,7 @@ Use the symbol 'none as the value if the wiki doesn't support the property."
         (setq outline-regexp (car simple-wiki-outline-patterns))
         (setq outline-heading-end-regexp (cdr simple-wiki-outline-patterns)))
 
-      (set (make-local-variable 'simple-wiki-tag-history) nil)
+      ;; (set (make-local-variable 'simple-wiki-tag-history) nil)
 
       (define-key ,(intern (concat "simple-" (symbol-name mode) "-mode-map"))
         "\C-c\C-e" 'simple-wiki-insert-emph)
@@ -810,6 +821,8 @@ Use the symbol 'none as the value if the wiki doesn't support the property."
 
 ;; mode definitions
 
+;; oddmuse wikis
+
 ;; for historical reasons define `simple-wiki-mode'
 (simple-wiki-define-major-mode
  'wiki
@@ -830,21 +843,30 @@ Use the symbol 'none as the value if the wiki doesn't support the property."
 \\{simple-oddmuse-mode-map}"
  :camelcase 'none)
 
-;; just a start.  not very good yet.
+
+
+;; mediawiki
+
 (simple-wiki-define-major-mode
  'mediawiki
  "MediaWiki"
- "Simple mode to edit mediawiki pages."
+ "Simple mode to edit mediawiki pages.
+\\{simple-mediawiki-mode-map}"
  :camelcase 'none
+
  :smilies 'none
+
  :linebreak '("<br>" . 0)
- :tags '(("b" . t) ("big" . t) ("blockquote" . t) ("caption" . t) ("code" . t)
-         ("center" . t) ("cite" . t) ("dfn" . t) ("dl" . t) ("em" . t)
-         ("i" . t) ("kbd" . t) ("math" . t) ("nowiki" . t) ("ol" . t)
-         ("pre" . t) ("samp" . t) ("small" . t) ("strike" . t) ("strong" . t)
-         ("sub" . t) ("sup" . t) ("tt" . t) ("u" . t) ("ul" . t) ("var" . t)
-         ("a" . t) ("div" . t) ("font" . t) ("table" . t) ("td" . t)
-         ("tr" . t))
+
+ :tags '(("b" . nil) ("big" . nil) ("blockquote" . nil) ("caption" . nil)
+         ("code" . nil) ("center" . nil) ("cite" . nil) ("dfn" . nil)
+         ("dl" . nil) ("em" . nil) ("i" . nil) ("kbd" . nil) ("math" . nil)
+         ("nowiki" . nil) ("ol" . nil) ("pre" . nil) ("samp" . nil)
+         ("small" . nil) ("strike" . nil) ("strong" . nil) ("sub" . nil)
+         ("sup" . nil) ("tt" . nil) ("u" . nil) ("ul" . nil) ("var" . nil)
+         ("a" . nil) ("div" . nil) ("font" . nil) ("table" . nil) ("td" . nil)
+         ("tr" . nil))
+
  :keywords
  (list
   '(simple-wiki-match-tag-i . (0 'simple-wiki-italic-face append))
@@ -855,6 +877,7 @@ Use the symbol 'none as the value if the wiki doesn't support the property."
   '(simple-wiki-match-tag-strong . (0 'simple-wiki-strong-face append))
   '(simple-wiki-match-tag-math . (0 'font-lock-string-face append))
   '(simple-wiki-match-tag-strike . (0 'simple-wiki-strike-face append))
+  '(simple-wiki-match-tag-code . (0 'simple-wiki-code-face append))
 
   ;; tags
   (list (concat "\\(</?\\)"
@@ -867,16 +890,102 @@ Use the symbol 'none as the value if the wiki doesn't support the property."
         '(5 'font-lock-string-face t t)
         '(6 'default t t))
 
-  '(simple-wiki-match-tag-nowiki . (0 'simple-wiki-nowiki-face t))
+  ;; again.  otherwise overwritten by tag highlight.
+  '("<br>" . (0 'font-lock-warning-face t))
 
-  ;; code blocks
-  ;; highlight of <code> and <pre> needs some more sophisticated stuff :(
-  '(simple-wiki-match-tag-code . (0 'simple-wiki-code-face t))
+  '(simple-wiki-match-tag-nowiki . (0 'simple-wiki-nowiki-face t))
   '(simple-wiki-match-tag-pre . (0 'simple-wiki-code-face t))
 
   '("^ .*$" . (0 'simple-wiki-code-face t))))
 
+
 
+;; phpwiki
+
+(simple-wiki-define-major-mode
+ 'phpwiki
+ "PhpWiki"
+ "Simple mode to edit php wiki pages.
+\\{simple-phpwiki-mode-map}"
+
+ :camelcase
+ (if (featurep 'xemacs)
+     ;; FIXME: no character classes.  only ascii chars will work
+     (cons (concat "\\([^~]\\|^\\)"
+                   "\\<\\([A-Z][a-z]+"
+                   "\\([A-Z][a-z]+\\)+\\)\\(\\>\\|'\\)"  2))
+   (cons (concat "\\([^~]\\|^\\)"
+                 "\\<\\([[:upper:]][[:lower:]]+"
+                 "\\([[:upper:]][[:lower:]]+\\)+\\)\\(\\>\\|'\\)")  2))
+
+ :free-link '("\\(^\\|[^~]\\)\\[\\([^\n]+?\\)\\]" . 2)
+ 
+ :tags '(("pre" . t) ("verbatim" . t) ("b" . nil) ("big" . nil) ("i" . nil)
+         ("small" . nil) ("tt" . nil) ("em" . nil) ("strong" . nil)
+         ("abbr" . nil) ("acronym" . nil) ("cite" . nil) ("code" . nil)
+         ("dfn" . nil) ("kbd" . nil) ("samp" . nil) ("var" . nil)
+         ("sup" . nil) ("sub" . nil))
+
+ :headlines '(("^[ \t]*!!!\\(.*?\\)$" . 1)
+              ("^[ \t]*!!\\([^!].*?\\)$" . 1)
+              ("^[ \t]*!\\([^!].*?\\)$" . 1)
+              nil
+              nil
+              nil)
+
+ :outline '("[ \t]!+" . "\n")
+ 
+ :em-strings '("_" . "_")
+
+ :strong-strings '("*" . "*")
+
+ :strong-em-strings '("_*" . "*_")
+
+ ;; FIXME: this works not well with font-lock...
+ :deflist '("^\\([^\n]+:\\)[ \t]*\n[ \t]+.*?" . 1)
+
+ :em-patterns (list '("\\(\\W\\|^\\)_.*?_\\(\\W\\|$\\)" . 0)
+                    '("\\(\\W\\|^\\)\\*.*?\\*\\(\\W\\|$\\)" . 0)
+                    (cons (concat "\\(\\W\\|^\\)\\(\\*_\\|_\\*\\)"
+                                  ".*?\\(\\_*\\|\\*_\\)\\(\\W\\|$\\)")  0))
+
+ :enum '("^\\([-*#o+ \t]*#+\\)\\([^-#*+]\\|$\\)" . 1)
+
+ :bullet '("^\\([-*#o+ \t]*\\([-*+]\\|o[ \t]+\\)\\)\\([^-*#+]\\|$\\)" . 1)
+ 
+ :smilies 'none
+
+ :linebreak '("%%%" . 0)
+
+ :indent 'none
+
+ :keywords
+ (list
+  '(simple-wiki-match-tag-i . (0 'simple-wiki-italic-face append))
+  '(simple-wiki-match-tag-b . (0 'simple-wiki-bold-face append))
+  '(simple-wiki-match-tag-tt . (0 'simple-wiki-teletype-face append))
+  '(simple-wiki-match-tag-em . (0 'simple-wiki-emph-face append))
+  '(simple-wiki-match-tag-strong . (0 'simple-wiki-strong-face append))
+  '(simple-wiki-match-tag-code . (0 'simple-wiki-code-face append))
+  '(simple-wiki-match-tag-pre . (0 'simple-wiki-code-face append))
+
+  '("\\(\\W\\|^\\)=.*?=\\(\\W\\|$\\)" . (0 'simple-wiki-teletype-face append))
+
+  ;; tags
+  (list (concat "\\(</?\\)"
+                "\\([A-Za-z]+\\)"
+                "\\(\\([ \t]+[a-zA-Z]+\\)=\\(\".*\"\\)\\)*"
+                "\\(/?>\\)?")
+        '(1 'default t t)
+        '(2 'font-lock-function-name-face t t)
+        '(4 'font-lock-variable-name-face t t)
+        '(5 'font-lock-string-face t t)
+        '(6 'default t t))
+
+  '(simple-wiki-match-tag-verbatim . (0 'simple-wiki-code-face t))))
+
+
+
 
 (provide 'simple-wiki)
 
