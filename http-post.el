@@ -69,7 +69,7 @@ cannot be changed: The basic encoding is implemented using
 `html-url-encode' and is called application/x-www-form-urlencoded.
 
 With optional argument SENTINEL, the buffer is not shown.  It is the
-responsability of the sentinel to show it, if appropriate.  A sentinel
+responsibility of the sentinel to show it, if appropriate.  A sentinel
 function takes two arguments, process and message.  It is called when
 the process is killed, for example.  This is useful when specifying a
 non-persistent connection.  By default, connections are persistent.

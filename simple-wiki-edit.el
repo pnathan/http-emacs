@@ -264,7 +264,7 @@ last equal sign."
 This takes `simple-wiki-url' and returns everything up
 to the first \"?\"."
   (unless simple-wiki-url
-    (error "Current buffer is not associated with an URL"))
+    (error "Current buffer is not associated with a URL"))
   (if (string-match "^\\(.*?\\)\\?" simple-wiki-url)
       (match-string 1 simple-wiki-url)
     (error "Cannot determine current script name in %s"
