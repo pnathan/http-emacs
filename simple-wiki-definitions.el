@@ -53,7 +53,7 @@
      swd-usemod-wiki-save
      utf-8)
     ("om"
-     "http://www.emacswiki.org/cgi-bin/oddmuse.pl"
+     "http://www.oddmuse.org/cgi-bin/oddmuse.pl"
      "?action=browse&raw=2&id="
      "?action=index&raw=1"
      "?action=rc&raw=1"
