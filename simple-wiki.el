@@ -126,17 +126,17 @@
    '("^=\\{6\\}\\([^\n=]+\\)=\\{6\\}[^=]"
      (1 'simple-wiki-heading-6-face))
 
-    ;; emphasis
+   '("<\\(/?[a-z]+\\)" (1 font-lock-function-name-face))   ; tags
+   '("^[*#]\\([*#]+\\)" . 'font-lock-constant-face)        ; enums
+   '("^\\([*#]\\)[^*#]" 1 font-lock-builtin-face)          ; enums
+
+   ;; emphasis FIXME: these are multi lines as well
    '(simple-wiki-match-emph . 'simple-wiki-emph-face)
    '(simple-wiki-match-strong . 'simple-wiki-strong-face)
 
-   ;; paragraphs
-   '(simple-wiki-match-code . 'simple-wiki-code-face)
-;;   '("^[\t ].+?$" . 'simple-wiki-code-face)                ; code
-   '("<\\(/?[a-z]+\\)" (1 font-lock-function-name-face))   ; tags
-   '("^[*#]\\([*#]+\\)" . 'font-lock-constant-face)        ; enums
-   '("^\\([*#]\\)[^*#]" 1 font-lock-builtin-face)))        ; enums
-
+   ;; multi lines
+   '("^[\t ]" (simple-wiki-match-code (simple-wiki-check-in-code-block) nil
+                                      (0 'simple-wiki-code-face)))))
 
 (define-derived-mode simple-wiki-mode text-mode "Wiki"
   "Simple mode to edit wiki pages.
@@ -158,6 +158,10 @@
 	 ("pre" \n) ("tt") ("u")))
   (set (make-local-variable 'skeleton-transformation) 'identity)
   (setq indent-tabs-mode nil))
+
+
+(defvar simple-wiki-in-code-block nil
+  "")
 
 
 (defun simple-wiki-match-taged (limit tag)
@@ -196,30 +200,28 @@
   (or (simple-wiki-match-strong-classic limit)
       (simple-wiki-match-taged limit "strong")))
 
-(defun simple-wiki-match-code (limit)
+(defun simple-wiki-check-in-code-block ()
+  "Set the variable `simple-wiki-in-code-block'.
+Set `simple-wiki-in-code-block' to non nil if the point is in a code block."
   ;; FIXME: we assume that the line before code is empty.
   ;; this is not necessary in all cases.  known issues:
-  ;;        (a) the buffer starts with code.
-  ;;        (b) code starts directly after a heading.
-  (let ((cont (re-search-forward "^[ \t]*$" limit t)) beg end)
-    (while cont
-      ;; are we at the end of the buffer?  if not move one char forward
-      (if (= (point) (point-max))
-          (setq cont nil)
-        (forward-char)
-        ;; check if the next line starts with a whitespace
-        (let ((char (char-after (point))))
-          (if (and char (or (= char ?\t) (= char ? )))
-              (progn
-                (setq cont nil) ; we found the beginning of a comment
-                (setq beg (point)))
-            (setq cont (re-search-forward "^[ \t]*$" limit t))))))
-    (when beg
-      (if (re-search-forward "^[^\t ]" limit t)
-          (setq end (match-beginning 0))
-        (setq end (point)))
-      (store-match-data (list beg end))
-      t)))
+  ;;        (a) code starts directly after a heading.
+  (setq simple-wiki-in-code-block nil)
+  (save-excursion
+    (backward-paragraph)
+    (forward-line 1)
+    (let ((char (char-after (point))))
+      (when (and char (or (= char ?\t) (= char ? )))
+        (setq simple-wiki-in-code-block t)
+        (forward-paragraph)
+        (point)))))
+
+
+(defun simple-wiki-match-code (limit)
+  (when simple-wiki-in-code-block
+    (store-match-data (list (point-at-bol) limit))
+    (goto-char limit)
+    t))
 
 
 (provide 'simple-wiki)

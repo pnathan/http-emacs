@@ -166,6 +166,8 @@ pressing C-c C-t during edits."
   (setq-default simple-wiki-save-function simple-wiki-save-function)
   (setq-default simple-wiki-http-version simple-wiki-http-version)
   (setq-default simple-wiki-content-type simple-wiki-content-type)
+  (goto-char (point-min))
+  (forward-line)
 
   (simple-wiki-edit-mode))
 
