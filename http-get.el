@@ -313,14 +313,14 @@ use `decode-coding-region' and get the coding system to use from
   (interactive "sURL: ")
   (setq version (or version 1.0))
   (let* (host dir file port proc buf command start-line (message-headers "") )
-    (unless (string-match "http://\\([^/]+\\)/\\(.*/\\)?\\([^:]*\\)\\(:\\([0-9]+\\)\\)?" url)
+    (unless (string-match "http://\\([^/:]+\\)\\(:\\([0-9]+\\)\\)?/\\(.*/\\)?\\([^:]*\\)" url)
       (error "Cannot parse URL %s" url))
     (unless bufname (setq bufname
 			  (format "*HTTP GET %s *" url)))
     (setq host (match-string 1 url)
-	  dir (or (match-string 2 url) "")
-	  file (or (match-string 3 url) "")
-	  port (or (match-string 5 url) 80)
+	  port (or (and (setq port (match-string 3 url)) (string-to-int port)) 80)
+	  dir (or (match-string 4 url) "")
+	  file (or (match-string 5 url) "")
 	  buf (get-buffer-create bufname)
 	  proc
 	  (open-network-stream
