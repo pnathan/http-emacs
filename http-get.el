@@ -210,10 +210,7 @@ Parse the status line, headers and chunk"
                             (substring parsed-string (match-end 2)))
 		    ;; chunk 0 found we just burry it
 		    (setq parsed-string "")
-		    (setq http-parser-state 'trailer)
-		    ;;dirty=FIXME : we delete the process
-                    ;; (delete-process proc)
-		    )
+		    (setq http-parser-state 'trailer))
                 ;; we don't have the next chunk-size yet
 		(setq http-not-yet-parsed parsed-string)
 		(setq parsed-string "")))
