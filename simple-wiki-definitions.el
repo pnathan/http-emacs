@@ -98,7 +98,7 @@ the ninth contains any additional headers, for example
       ,(concat 
 	\"Basic \"
 	(base64-encode-string \"username:password\") )))
- These headers are passwd directly to http-get, which knows how to
+ These headers are passed directly to http-get, which knows how to
 grok them.  Note that this is distinct from the third field.
 ")
 
@@ -132,9 +132,10 @@ grok them.  Note that this is distinct from the third field.
         (link (simple-wiki-save-link))
         (http-version (swd-http-version (swd-nick simple-wiki-url)))
         (content-type (swd-http-coding (swd-nick simple-wiki-url)))
-        (headers) (proc))
+        (headers (swd-additional-headers nick))
+	(proc))
     (when (and http-version (= http-version 1.1))
-      (setq headers '(("Connection" . "close"))))
+      (setq headers (append headers '(("Connection" . "close")))))
     (setq proc (http-post
                 link
                 (list (cons "title" (simple-wiki-page))
@@ -188,6 +189,12 @@ grok them.  Note that this is distinct from the third field.
 
 (defun swd-http-coding (nick)
   (eighth (assoc nick swd-wiki-defs-list)))
+
+
+(defun swd-additional-headers (nick)
+  (ninth  (assoc nick swd-wiki-defs-list))
+  )
+
 
 (defun swd-save-func (nick)
   (seventh (assoc nick swd-wiki-defs-list)))

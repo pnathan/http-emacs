@@ -172,12 +172,12 @@ pressing C-c C-m during edits."
 
 ;;;###autoload
 (defun simple-wiki-edit (url &optional save-func bufname
-                             http-version content-type)
+                             http-version content-type additional-headers)
   "Edit URL using `simple-wiki-edit-mode'.
 Optional SAVE-FUNC is a function to use when saving."
-  (let ((headers) (proc))
+  (let ((headers additional-headers) (proc))
     (when (and http-version (= http-version 1.1))
-      (setq headers '(("Connection" . "close"))))
+      (setq headers (append '(("Connection" . "close")) headers)))
     (unless content-type
       (setq content-type 'iso-8859-1))
     (setq proc (http-get url headers 'simple-wiki-edit-sentinel

@@ -1,5 +1,5 @@
 ;;; simple-wiki-completion.el ---
-;; Time-stamp: <2004-11-21 13:50:43 deego>
+;; Time-stamp: <2004-11-21 14:28:58 deego>
 ;; Copyright (C) 2003 D. Goel
 ;; Emacs Lisp Archive entry
 ;; Filename: simple-wiki-completion.el
@@ -126,11 +126,12 @@ Is a list of the form
   :group 'simple-wiki)
 
 (defun swc-pages-get-http-get (refpage &optional http-version)
-  (let (proc pages headers (progress 60)
+  (let (proc pages (headers  (swd-additional-headers nick))
+	     (progress 60)
              (progress-bar "Building completions: "))
     (when (and http-version (= http-version 1.1))
       ;;(setq headers '(("Connection" . "close")))
-      (setq headers (append (swd-additional-headers nick)
+      (setq headers (append headers
 			    '(("Connection" . "close"))))
       )
     (setq proc (http-get refpage headers
@@ -215,7 +216,9 @@ Not to be confused with `swc-pages'")
       (swd-save-func nick)
       nil
       (swd-http-version nick)
-      (swd-http-coding nick))
+      (swd-http-coding nick)
+      (swd-additional-headers nick)
+      )
      (setq swc-pages-completion swc-tmp-pages)))
 
 ;;;###autoload
