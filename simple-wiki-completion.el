@@ -190,7 +190,7 @@ Not to be confused with `swc-pages'
  	 (pages (ignore-errors (swc-completions-get nick)))
 	   (completion-ignore-case simple-wiki-completion-ignore-case)
  	   (page (completing-read "Page: " pages)))
-     (simple-wiki-edit (simple-wiki-link page) simple-wiki-save-function nil (swd-http-version nick))
+     (simple-wiki-edit (simple-wiki-link page) simple-wiki-save-function nil (swd-http-version nick) (swd-http-coding nick))
      )
     )
  
@@ -204,7 +204,7 @@ Not to be confused with `swc-pages'
 	     (string-match
 	      simple-wiki-link-pattern
 	      page))
-	(simple-wiki-edit (simple-wiki-link page) simple-wiki-save-function  nil (swd-http-version nick))
+	(simple-wiki-edit (simple-wiki-link page) simple-wiki-save-function  nil (swd-http-version nick) (swd-http-coding nick))
       (error "No WikiName at point"))))
 
 (defun swc-browse ( &optional nick page)
@@ -227,6 +227,7 @@ Not to be confused with `swc-pages'
       (swd-save-func nick)
       nil
       (swd-http-version nick)
+      (swd-http-coding nick)
       )
      (setq swc-pages-completion swc-tmp-pages)))
 

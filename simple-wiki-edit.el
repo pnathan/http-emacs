@@ -68,10 +68,6 @@
 (defvar simple-wiki-save-function nil
   "The function to use to save the current buffer.")
 
-(defvar simple-wiki-content-type 'iso-8859-1
-  "The function to use to save the current buffer.")
-
-
 
 (defcustom simple-wiki-minor-p nil
   "Whether to label changes as minor.  This can be changed by
@@ -146,10 +142,12 @@ pressing C-c C-t during edits.")
      nil t)))
 
 ;;;###autoload
-(defun simple-wiki-edit (url &optional save-func bufname http-version)
+(defun simple-wiki-edit (url &optional save-func bufname http-version content-type)
   "Edit URL using `simple-wiki-edit-mode'.
 Optional SAVE-FUNC is a function to use when saving."
-  (http-get url nil nil http-version bufname simple-wiki-content-type)
+  (unless content-type 
+    (setq content-type 'iso-8859-1))
+  (http-get url nil nil http-version bufname content-type)
   (simple-wiki-edit-mode)
   (set-fill-column simple-wiki-fill-column)
   (set (make-local-variable 'simple-wiki-url) url)

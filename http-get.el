@@ -32,6 +32,8 @@
 ;; Use `http-get' to download an URL.
 
 ;;History
+;; 1.0.10
+;; -- fix some codings prblems again
 ;; 1.0.9
 ;; --added better coding support
 ;; 1.0.8
@@ -46,7 +48,7 @@
 
 (require 'hexl)
 
-(defvar http-get-version "1.0.9")
+(defvar http-get-version "1.0.10")
 
 
 ;;Proxy
@@ -175,16 +177,17 @@ Parse the status line, headers and chunk"
 	    (let ((end-headers (match-end 0)))
 	      (set (make-local-variable 'http-headers) (http-parse-headers (substring parsed-string 0 (match-beginning 0))))
 	      (if (string= "chunked"
-			   (cdr (assoc "Transfer-Encoding" http-headers)))
+			   (cdr (assoc "transfer-encoding" http-headers)))
 		  (setq http-parser-state 'chunked)
 		(setq http-parser-state 'dump)
 		)
-	      (when (setq content-type
-			   (cdr (assoc "Content-Type" http-headers)))
-		(string-match "charset=\\(.*\\)" content-type)
-		(set (make-local-variable 'http-coding)
-		(intern-soft (downcase (match-string 1 content-type))))
-		)
+	      (when (and 						         
+		     (setq content-type					     
+			   (cdr (assoc "content-type" http-headers)))	     
+		     (string-match "charset=\\(.*\\)" content-type))	     
+		(set (make-local-variable 'http-coding)			     
+		     (intern-soft (downcase (match-string 1 content-type)))))
+	      
 	      
 	      (setq parsed-string (substring parsed-string end-headers))
 	      )
@@ -242,7 +245,7 @@ Argument HEADER-STRING A string containing a header list."
   (let ((lines-list (split-string header-string "\r\n")))
     (mapcar (lambda (line)
 	      (if (string-match ": " line)
-		  (cons (substring line 0 (match-beginning 0))
+		  (cons (downcase (substring line 0 (match-beginning 0)))
 			(substring line (match-end 0)))
 		line))
 	    lines-list)

@@ -1,5 +1,5 @@
 ;;; simple-wiki-definitions.el --- common definitions for simple-wiki 
-;; Time-stamp: <2003-06-20 11:07:13 deego>
+
 ;; Copyright (C) 2003 D. Goel, Pierre Gaston
 ;; Emacs Lisp Archive entry
 ;; Filename: simple-wiki-definitions.el
@@ -7,7 +7,7 @@
 ;; Maintainer: Pierre Gaston <pierre@gaston-karlaouzou.com>
 
 ;; Keywords:
-;; Version: 1.0.2
+;; Version: 1.0.4
  
 ;; This file is NOT (yet) part of GNU Emacs.
  
@@ -27,6 +27,7 @@
 ;; Boston, MA 02111-1307, USA.
 
 
+
 (defcustom swd-wiki-defs-list '( 
 	( "ew" 
 	  "http://www.emacswiki.org/cgi-bin/wiki.pl"
@@ -34,36 +35,40 @@
 	  "?action=index&raw=1"
 	  "?action=rc&raw=1"
 	  1.1
-	  swd-usemod-wiki-save)
+	  swd-usemod-wiki-save
+	  utf-8)
         ( "om" 
 	  "http://www.emacswiki.org/cgi-bin/oddmuse.pl"
 	  "?action=browse&raw=2&id="
 	  "?action=index&raw=1"
 	  "?action=rc&raw=1"
 	  1.1
-	  swd-usemod-wiki-save)
+	  swd-usemod-wiki-save
+	  utf-8)
 	 ( "octave" 
-	  "http://wiki.octave.org/wiki.pl"
+	  "http://gnufans.net/octave.pl"
 	  "?action=browse&raw=2&id="
 	  "?action=index&raw=1"
 	  "?action=rc&raw=1"
 	  1.0
-	  swd-usemod-wiki-save)
+	  swd-usemod-wiki-save
+	  iso-8859-1)
 	 ( "fsedu" 
 	  "http://gnufans.net/fsedu.pl"
 	  "?action=browse&raw=2&id="
 	  "?action=index&raw=1"
 	  "?action=rc&raw=1"
 	  1.0
-	  swd-usemod-wiki-save)
-
+	  swd-usemod-wiki-save
+	  iso-8859-1)
 	  ( "pierre" 
 	  "http://pierre.gaston-karlaouzou.com/cgi-bin/en-pierre.pl"
 	  "?action=browse&raw=2&id="
 	  "?action=index&raw=1"
 	  "?action=rc&raw=1"
 	  1.1
-	  swd-usemod-wiki-save)
+	  swd-usemod-wiki-save
+	  iso-8859-1)
  )
 "\
 defines the wiki you visit
@@ -74,6 +79,7 @@ the fourth is  the possible parameters to view recentchanges
 the fifth is the possible parameters to view recentchanges
 the sixth is the version of the http-protocol to use 
 the seventh is the save function to use for this wiki 
+the eight th encoding
 ")
 
 
@@ -100,7 +106,7 @@ the seventh is the save function to use for this wiki
 		       (apply 'concat (split-string user-full-name))))
 	     (cons "text" (buffer-string))
 	     (cons "recent_edit" (simple-wiki-minor-value)))
-       http-coding
+       (swd-http-coding (swd-nick simple-wiki-url))
       (swd-http-version (swd-nick simple-wiki-url)))))
     (simple-wiki-edit-mode)
     (set (make-local-variable 'simple-wiki-url) url)
@@ -136,12 +142,16 @@ the seventh is the save function to use for this wiki
   (fourth  (assoc nick swd-wiki-defs-list))
   )
 
-(defun swd-rc-parameters (nick)
+(defun swd-rc-ptarameters (nick)
   (fifth (assoc nick swd-wiki-defs-list))
   )
 
 (defun swd-http-version (nick)
   (sixth  (assoc nick swd-wiki-defs-list))
+  )
+
+(defun swd-http-coding (nick)
+  (eighth  (assoc nick swd-wiki-defs-list))
   )
 
 (defun swd-save-func (nick)
