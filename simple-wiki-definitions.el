@@ -1,5 +1,5 @@
 ;;; simple-wiki-definitions.el --- common definitions for simple-wiki 
-
+;; Time-stamp: <2003-06-20 11:07:13 deego>
 ;; Copyright (C) 2003 D. Goel, Pierre Gaston
 ;; Emacs Lisp Archive entry
 ;; Filename: simple-wiki-definitions.el
@@ -43,7 +43,7 @@
 	  1.1
 	  swd-usemod-wiki-save)
 	 ( "octave" 
-	  "http://gnufans.net/octave.pl"
+	  "http://wiki.octave.org/wiki.pl"
 	  "?action=browse&raw=2&id="
 	  "?action=index&raw=1"
 	  "?action=rc&raw=1"
