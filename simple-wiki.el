@@ -180,8 +180,8 @@
    '("<\\(/?[a-z]+\\)" (1 font-lock-function-name-face t)) ; tags
    '("^[*#]\\([*#]+\\)" (0 font-lock-constant-face t))     ; enums
    '("^\\([*#]\\)[^*#]" (1 font-lock-builtin-face t))      ; enums
-   '("^\\:\\(\\:+\\)" (0 font-lock-comment-face))
-   '("^\\(\\:\\)[^\\:]" (1 font-lock-string-face))
+   '("^\\:\\(\\:+\\)" (0 font-lock-comment-face))          ; indent
+   '("^\\(\\:\\)[^\\:]" (1 font-lock-string-face))         ; indent
 
    ;; emphasis (maybe be multi lines, but this seems to work fine
    '(simple-wiki-match-emph-classic . 'simple-wiki-emph-face)
@@ -192,32 +192,23 @@
          '(1 'simple-wiki-local-link-face prepend))
    (cons simple-wiki-link-pattern '(0 'simple-wiki-local-link-face prepend))
 
-   ;; misc tags
-   '("<i>"
-     (simple-wiki-match-italic (simple-wiki-end-of-tag "i") nil
-                               (0 'simple-wiki-italic-face prepend)))
-   '("<b>"
-     (simple-wiki-match-bold (simple-wiki-end-of-tag "b") nil
-                               (0 'simple-wiki-bold-face prepend)))
-   '("<u>"
-     (simple-wiki-match-underline (simple-wiki-end-of-tag "u") nil
-                               (0 'simple-wiki-underline-face prepend)))
-   '("<tt>"
-     (simple-wiki-match-teletype (simple-wiki-end-of-tag "tt") nil
-                                 (0 'simple-wiki-teletype-face prepend)))
+   '(simple-wiki-match-italic . (0 'simple-wiki-italic-face prepend))
+   '(simple-wiki-match-bold . (0 'simple-wiki-bold-face prepend))
+   '(simple-wiki-match-underline . (0 'simple-wiki-underline-face prepend))
+   '(simple-wiki-match-teletype . (0 'simple-wiki-teletype-face prepend))
+
    ;; code blocks
-   '("<code>"
-     (simple-wiki-match-code-tag (simple-wiki-end-of-tag "code") nil
-                                 (0 'simple-wiki-code-face t)))
-   '("<pre>"
-     (simple-wiki-match-pre (simple-wiki-end-of-tag "pre") nil
-                            (0 'simple-wiki-code-face t)))
-   '("^[\t ]" (simple-wiki-match-code (simple-wiki-check-in-code-block) nil
-                                      (0 'simple-wiki-code-face t)))
+   ;; highlight of <code> and <pre> needs some more sophisticated stuff :(
+
+   '(simple-wiki-match-code-tag . (0 'simple-wiki-code-face t))
+   '(simple-wiki-match-pre . (0 'simple-wiki-code-face t))
+
+   '("^[\t ]+[^\t \n]"
+     (simple-wiki-match-code (simple-wiki-check-in-code-block)
+                             (setq simple-wiki-in-code-block nil)
+                             (0 'simple-wiki-code-face t)))
    ;; should be the last
-   '("<nowiki>"
-     (simple-wiki-match-nowiki (simple-wiki-end-of-tag "nowiki") nil
-                               (0 'simple-wiki-nowiki-face t)))))
+   '(simple-wiki-match-nowiki . (0 'simple-wiki-nowiki-face t))))
 
 
 (define-derived-mode simple-wiki-mode text-mode "Wiki"
@@ -227,6 +218,7 @@
   (make-local-variable 'font-lock-defaults)
   (setq font-lock-defaults  '(simple-wiki-font-lock-keywords t))
 
+  (setq font-lock-multiline t)
   (font-lock-mode 1)
   (goto-address)
   (set (make-local-variable 'sgml-tag-alist)
@@ -238,52 +230,10 @@
 
 (defvar simple-wiki-in-code-block nil)
 
-(defun simple-wiki-end-of-tag (tag)
-  (save-excursion
-    (if (search-forward (concat "</" tag ">") nil t)
-        (search-backward "<")
-      (when (not (= (point) (point-max)))
-        (forward-char 1)))
-    (point)))
-
-(defun simple-wiki-match-tag (tag limit)
-  (search-backward (concat "<" tag ">"))
-  (search-forward ">")
-  (store-match-data (list (point) limit))
-  (goto-char limit)
-  t)
-
-(defun simple-wiki-match-pre (limit)
-  (simple-wiki-match-tag "pre" limit))
-
-(defun simple-wiki-match-italic (limit)
-  (simple-wiki-match-tag "i" limit))
-
-(defun simple-wiki-match-bold (limit)
-  (simple-wiki-match-tag "b" limit))
-
-(defun simple-wiki-match-underline (limit)
-  (simple-wiki-match-tag "u" limit))
-
-(defun simple-wiki-match-teletype (limit)
-  (simple-wiki-match-tag "tt" limit))
-
-(defun simple-wiki-match-code-tag (limit)
-  (simple-wiki-match-tag "code" limit))
-
-(defun simple-wiki-match-nowiki (limit)
-  (simple-wiki-match-tag "nowiki" limit))
-
-(defun simple-wiki-match-emph (limit)
-  (simple-wiki-match-tag "em" limit))
-
-(defun simple-wiki-match-strong (limit)
-  (simple-wiki-match-tag "strong" limit))
-
 (defun simple-wiki-match-emph-classic (limit)
   (when (re-search-forward
-         "[^']\\(''\\)[^']" limit t)
-    (let ((beg (match-end 1)) end)
+         "\\([^']\\|^\\)\\(''\\)[^']" limit t)
+    (let ((beg (match-end 2)) end)
       (if (re-search-forward "''+" limit t)
           (setq end (match-beginning 0))
         (setq end (point)))
@@ -298,6 +248,36 @@
         (setq end (point)))
       (store-match-data (list beg end))
       t)))
+
+(defun simple-wiki-match-tag (tag limit)
+  (when (search-forward (concat "<" tag ">") limit t)
+    (let ((beg (match-end 0)) end)
+      (if (search-forward (concat "</" tag ">") limit t)
+          (setq end (match-beginning 0))
+        (setq end (point)))
+      (store-match-data (list beg end))
+      t)))
+
+(defun simple-wiki-match-italic (limit)
+  (simple-wiki-match-tag "i" limit))
+
+(defun simple-wiki-match-bold (limit)
+  (simple-wiki-match-tag "b" limit))
+
+(defun simple-wiki-match-underline (limit)
+  (simple-wiki-match-tag "u" limit))
+
+(defun simple-wiki-match-teletype (limit)
+  (simple-wiki-match-tag "tt" limit))
+
+(defun simple-wiki-match-nowiki (limit)
+  (simple-wiki-match-tag "nowiki" limit))
+
+(defun simple-wiki-match-code-tag (limit)
+  (simple-wiki-match-tag "code" limit))
+
+(defun simple-wiki-match-pre (limit)
+  (simple-wiki-match-tag "pre" limit))
 
 (defun simple-wiki-check-in-code-block ()
   "Set the variable `simple-wiki-in-code-block'.

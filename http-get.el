@@ -111,7 +111,8 @@ Argument STRING The string outputed bythe process."
 	(run-hooks 'http-filter-pre-insert-hook)
         ;; it may be a problem if we only got a 'half' multi byte char
         ;; the http-parser should now take care that the string contains
-        ;; only full chunks (is this enough?)
+        ;; only full chunks
+        ;; FIXME: i doubt this is enough.
         (insert (decode-coding-string string http-coding))
 	(run-hooks 'http-filter-post-insert-hook)
 	(set-marker (process-mark proc) (point)))
