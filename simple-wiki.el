@@ -33,9 +33,12 @@
 ;;
 ;; (add-to-list 'auto-mode-alist '("w3mtmp" . simple-wiki-mode))
 
-;;History
+;; ChangeLog:
+
+;; 1.0.2
+;;   - Added a lot of font locking.
 ;; 1.0.1
-;;  -- add a variable to set the WikiName Regex
+;;   - Added a variable to set the WikiName Regex.
 
 ;;; Code:
 
@@ -86,6 +89,16 @@
   "Face for WiKi headings at level 6."
   :group 'simple-wiki-faces)
 
+(defface simple-wiki-emph-face
+  '((t (:slant italic)))
+  "Face for ''emphasis''"
+  :group 'simple-wiki-faces)
+
+(defface simple-wiki-strong-face
+  '((t (:weight bold)))
+  "Face for ''emphasis''"
+  :group 'simple-wiki-faces)
+
 (defface simple-wiki-code-face
   '((((class color) (background dark)) (:background "dark slate gray"))
     (((class color) (background light)) (:background "moccasin")))
@@ -93,28 +106,36 @@
   :group 'simple-wiki-faces)
 
 (defconst simple-wiki-font-lock-keywords
-  '(("^\\([0-9]+\\)[ \t]+\\(#.+?\\)\n"
-     (1 'font-lock-constant-face)
-     (2 'font-lock-warning-face))       ; the time stamp and warning at the top
+  (list
+   ;; time stamp at the beginning of the buffer
+   '("^\\([0-9]+\\)[ \t]+\\(#.+?\\)\n"
+     (1 font-lock-constant-face)
+     (2 font-lock-warning-face))
 
-    ;; headings
-    ("^=\\([^\n=]+\\)=[^=]"
+   ;; headings
+   '("^=\\([^\n=]+\\)=[^=]"
      (1 'simple-wiki-heading-1-face))
-    ("^=\\{2\\}\\([^\n=]+\\)=\\{2\\}[^=]"
-     (1 'simple-wiki-heading-2-face))
-    ("^=\\{3\\}\\([^\n=]+\\)=\\{3\\}[^=]"
+   '("^=\\{2\\}\\([^\n=]+\\)=\\{2\\}[^=]"
+    (1 'simple-wiki-heading-2-face))
+   '("^=\\{3\\}\\([^\n=]+\\)=\\{3\\}[^=]"
      (1 'simple-wiki-heading-3-face))
-    ("^=\\{4\\}\\([^\n=]+\\)=\\{4\\}[^=]"
+   '("^=\\{4\\}\\([^\n=]+\\)=\\{4\\}[^=]"
      (1 'simple-wiki-heading-4-face))
-    ("^=\\{5\\}\\([^\n=]+\\)=\\{5\\}[^=]"
+   '("^=\\{5\\}\\([^\n=]+\\)=\\{5\\}[^=]"
      (1 'simple-wiki-heading-5-face))
-    ("^=\\{6\\}\\([^\n=]+\\)=\\{6\\}[^=]"
+   '("^=\\{6\\}\\([^\n=]+\\)=\\{6\\}[^=]"
      (1 'simple-wiki-heading-6-face))
 
-    ("^[\t ].+?$" . 'simple-wiki-code-face)                ; code
-    ("<\\(/?[a-z]+\\)" (1 font-lock-function-name-face))   ; tags
-    ("^[*#]\\([*#]+\\)" . 'font-lock-constant-face)        ; enums
-    ("^\\([*#]\\)[^*#]" 1 font-lock-builtin-face)))        ; enums
+    ;; emphasis
+   '(simple-wiki-match-emph . 'simple-wiki-emph-face)
+   '(simple-wiki-match-strong . 'simple-wiki-strong-face)
+
+   ;; paragraphs
+   '(simple-wiki-match-code . 'simple-wiki-code-face)
+;;   '("^[\t ].+?$" . 'simple-wiki-code-face)                ; code
+   '("<\\(/?[a-z]+\\)" (1 font-lock-function-name-face))   ; tags
+   '("^[*#]\\([*#]+\\)" . 'font-lock-constant-face)        ; enums
+   '("^\\([*#]\\)[^*#]" 1 font-lock-builtin-face)))        ; enums
 
 
 (define-derived-mode simple-wiki-mode text-mode "Wiki"
@@ -137,6 +158,68 @@
 	 ("pre" \n) ("tt") ("u")))
   (set (make-local-variable 'skeleton-transformation) 'identity)
   (setq indent-tabs-mode nil))
+
+
+(defun simple-wiki-match-taged (limit tag)
+  (when (search-forward (concat "<" tag ">") limit t)
+    (let ((beg (match-end 0)) end)
+      (if (search-forward (concat "</" tag ">") limit t)
+          (setq end (match-beginning 0))
+        (setq end (point)))
+      (store-match-data (list beg end))
+      t)))
+
+(defun simple-wiki-match-emph-classic (limit)
+  (when (re-search-forward
+         "[^']\\(''\\)[^']" limit t)
+    (let ((beg (match-end 1)) end)
+      (if (re-search-forward "''+" limit t)
+          (setq end (match-beginning 0))
+        (setq end (point)))
+      (store-match-data (list beg end))
+      t)))
+
+(defun simple-wiki-match-strong-classic (limit)
+  (when (re-search-forward "\\('''\\)[^']" limit t)
+    (let ((beg (match-end 1)) end)
+      (if (re-search-forward "'''+" limit t)
+          (setq end (match-beginning 0))
+        (setq end (point)))
+      (store-match-data (list beg end))
+      t)))
+
+(defun simple-wiki-match-emph (limit)
+  (or (simple-wiki-match-emph-classic limit)
+      (simple-wiki-match-taged limit "em")))
+
+(defun simple-wiki-match-strong (limit)
+  (or (simple-wiki-match-strong-classic limit)
+      (simple-wiki-match-taged limit "strong")))
+
+(defun simple-wiki-match-code (limit)
+  ;; FIXME: we assume that the line before code is empty.
+  ;; this is not necessary in all cases.  known issues:
+  ;;        (a) the buffer starts with code.
+  ;;        (b) code starts directly after a heading.
+  (let ((cont (re-search-forward "^[ \t]*$" limit t)) beg end)
+    (while cont
+      ;; are we at the end of the buffer?  if not move one char forward
+      (if (= (point) (point-max))
+          (setq cont nil)
+        (forward-char)
+        ;; check if the next line starts with a whitespace
+        (let ((char (char-after (point))))
+          (if (and char (or (= char ?\t) (= char ? )))
+              (progn
+                (setq cont nil) ; we found the beginning of a comment
+                (setq beg (point)))
+            (setq cont (re-search-forward "^[ \t]*$" limit t))))))
+    (when beg
+      (if (re-search-forward "^[^\t ]" limit t)
+          (setq end (match-beginning 0))
+        (setq end (point)))
+      (store-match-data (list beg end))
+      t)))
 
 
 (provide 'simple-wiki)

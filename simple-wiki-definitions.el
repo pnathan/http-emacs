@@ -99,9 +99,7 @@ the eighth the encoding")
 (defun swd-usemod-wiki-save-sentinel (proc message)
   "Sentinel for the http-post-process."
   (switch-to-buffer (process-buffer proc))
-  ;; local variables seems to get destroyed when running
-  ;; `simple-siki-edit-mode'.  Setting the globals works
-  ;; around this problem.
+  ;; Same trick as in `simple-wiki-edit-sentinel'.  See comment there.
   (setq-default simple-wiki-url simple-wiki-url)
   (setq-default simple-wiki-time simple-wiki-time)
   (setq-default simple-wiki-save-function simple-wiki-save-function)
@@ -140,6 +138,7 @@ the eighth the encoding")
                 'swd-usemod-wiki-save-sentinel
                 http-version))
     (with-current-buffer (process-buffer proc)
+      ;; same trick as in `simple-wiki-edit'.  See comment there.
       (set (make-local-variable 'simple-wiki-url) url)
       (set (make-local-variable 'simple-wiki-save-function) save-func)
       (set (make-local-variable 'simple-wiki-time) nil)

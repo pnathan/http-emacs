@@ -158,9 +158,9 @@ pressing C-c C-t during edits."
   "Sentinel for the http-get process."
 
   (switch-to-buffer (process-buffer proc))
-  ;; local variables seems to get destroyed when running
-  ;; `simple-siki-edit-mode'.  Setting the globals works
-  ;; around this problem.
+  ;; local variables get destroyed when running
+  ;; `simple-siki-edit-mode'.  Setting the globals
+  ;; works around this problem.
   (setq-default simple-wiki-url simple-wiki-url)
   (setq-default simple-wiki-time simple-wiki-time)
   (setq-default simple-wiki-save-function simple-wiki-save-function)
@@ -182,6 +182,11 @@ Optional SAVE-FUNC is a function to use when saving."
     (setq proc (http-get url headers 'simple-wiki-edit-sentinel
                          http-version bufname content-type))
     (with-current-buffer (process-buffer proc)
+      ;; don't set the default values heres as another call to
+      ;; `simple-wiki-edit' might happen before we got the full
+      ;; page (OK, very unlikely but not impossible).  These (and
+      ;; setting the globals again in the sentinel) looks a bit
+      ;; fishy but i don't have a better idea.
       (set (make-local-variable 'simple-wiki-url) url)
       (set (make-local-variable 'simple-wiki-time) (current-time))
       (set (make-local-variable 'simple-wiki-http-version) http-version)
