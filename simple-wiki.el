@@ -46,7 +46,7 @@
 
 (defconst simple-wiki-link-pattern
 ;;  "\\<[A-Z\xc0-\xde]+[a-z\xdf-\xff]+\\([A-Z\xc0-\xde]+[a-z\xdf-\xff]*\\)+\\>"
-  "\\<\\([A-Z][[:lower:]]+[A-Z][[:lower:]]+[[:lower:][:upper:]]*\\)"
+  "\\<\\([A-Z][[:lower:][:upper:]]+?[A-Z][[:lower:]]+[[:lower:][:upper:]]*\\)"
   "The pattern used for finding WikiName.")
 
 
