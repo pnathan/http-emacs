@@ -52,6 +52,10 @@
 
 (require 'font-lock)
 
+
+
+;; regular expressions
+
 (if (featurep 'xemacs) ;; xemacs doesn't know character classes
     (defconst simple-wiki-link-pattern
       ;; c&p from oddmuse sources, weird doesn't work perfectly so use
@@ -67,15 +71,24 @@
   "The Pattern used for finding free links.")
 
 (defconst simple-wiki-smilies-pattern
-  "[ \t]\\(:-?D\\|:-?)\\|;-?\)\\|:-?]\\|8-\)\\|:-\\\\|\\|:-?[/\\\\]\\|:-?(\\|:-?{\\)\\W"
+  (concat
+   "[ \t]\\("
+   ":-?D\\|:-?)\\|;-?\)\\|:-?]\\|8-\)\\|"
+   ":-\\\\|\\|:-?[/\\\\]\\|:-?(\\|:-?{\\)"
+   "\\W")
   "The pattern used to match smilies.")
 
+
+
 ;; custom groups
+
 (defgroup simple-wiki ()
   "Edit raw wiki pages.")
 
-(defgroup mldonkey-faces ()
+(defgroup simple-wiki-faces ()
   "Faces simple-wiki-mode." :group 'simple-wiki)
+
+
 
 ;; faces
 
@@ -255,6 +268,10 @@
     "Face for links to pages on the same wiki."
     :group 'simple-wiki-faces))
 
+
+
+;; font lock keywords
+
 (defconst simple-wiki-font-lock-keywords
   (list
    ;; time stamp at the beginning of the buffer
@@ -315,6 +332,9 @@
    ;; should be the last
    '(simple-wiki-match-nowiki . (0 'simple-wiki-nowiki-face t))))
 
+
+
+;; mode definition
 
 (define-derived-mode simple-wiki-mode text-mode "Wiki"
   "Simple mode to edit wiki pages.
@@ -332,6 +352,9 @@
   (set (make-local-variable 'skeleton-transformation) 'identity)
   (setq indent-tabs-mode nil))
 
+
+
+;; font lock matcher
 
 (defvar simple-wiki-in-code-block nil)
 
@@ -422,6 +445,8 @@ If we are in a code block return the point of the end of the block."
             nil
           (store-match-data (list beg end))
           t)))))
+
+
 
 (provide 'simple-wiki)
 
