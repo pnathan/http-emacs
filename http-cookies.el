@@ -33,7 +33,13 @@
 
 ;;; Change log:
 
-;;
+;;; TODO:
+
+;;    - secure attribute will screw the parser
+;;    - maybe convert max-age to expires (we don't send it back)
+;;    - hash: hostname -> cookie, domain -> cookie
+;;    - whitelist
+;;    - blacklist
 
 ;;; Code:
 
@@ -46,7 +52,7 @@
   :group 'http-emacs)
 
 (defcustom http-emacs-cookie-file "~/.emacs-cookies"
-  "File where to store the cookies."
+  "*File where to store the cookies."
   :type 'file
   :group 'http-emacs)
 
@@ -54,12 +60,21 @@
   "^[ \t]*\\(.*?\\)[ \t]*=[ \t]*\"?\\(.*?\\)\"?[ \t]*;?[ \t]*$"
   "Regexp to match a token=\"value\"; in a cookie.")
 
+(defvar http-cookies-accept-functions
+  '(http-cookie-check-path
+    http-cookie-check-domain
+    http-cookie-check-hostname)
+  "*List of functions used to determine if we accept a cookie or not.
+If one of these function returns nil the cookie will be rejected.  Each
+function can access the free variables `cookie', `host' (from the url)
+`path' (from the URL) and `url' to make its decision.")
+
 
 
 ;; functions for parsing the header
 
 (defun http-cookies-ns-to-rfc (line)
-  "Make the header value LINE RFC compatible.
+  "Make the header value LINE a bit more RFC compatible.
 Make old netscape cookies a bit more RFC 2109 compatible by quoting
 the \"expires\" value.  We need this to be able to properly split
 the header value if there is more than one cookie."
@@ -116,34 +131,101 @@ substrings."
 
 (defun http-cookies-parse-cookie (string)
   "Parse one cookie.
-Return an alist ((NAME . VALUE) (arg1 . value1) (arg2 . value2) ...)
+Return an alist ((NAME . VALUE) (attr1 . value1) (attr2 . value2) ...)
 or nil on error."
-  (let (name value args error)
-    (dolist (arg (http-cookies-split-string string ?\;))
-      (if (string-match http-token-value-regexp arg)
-          (add-to-list 'args (cons (match-string 1 arg)
-                                   (match-string 2 arg)))
-        (setq error t)
-        (message "Cannot parse cookie %s" str)))
+  (let (name value attrs error)
+    (dolist (attr (http-cookies-split-string string ?\;))
+      (if (string-match http-token-value-regexp attr)
+          (add-to-list 'attrs (cons (match-string 1 attr)
+                                    (match-string 2 attr)))
+        ;; match the secure attribute
+        (if (string-match "[ \t]*\\([a-zA-Z]+\\)[ \t]*"  attr)
+            (add-to-list 'attrs (cons (match-string 0 attr t)))
+          (setq error t)
+          (message "Cannot parse cookie %s" str))))
     (unless error
-      args)))
+      attrs)))
 
-(defun http-cookies-set (host headers)
+(defun http-cookies-set (url headers)
   ;; The server may send several "Set-Cookie:" headers.
-  (dolist (line headers)
-    (when (equal (car line) "set-cookie")
-      (let ((header-value (http-cookies-ns-to-rfc (cdr line))))
+  (let ((host (http-cookies-hostname url)) (path (http-cookies-path url))
+        header-value cookie)
+    (dolist (line headers)
+      (when (equal (car line) "set-cookie")
+        (setq header-value (http-cookies-ns-to-rfc (cdr line)))
         ;; there may be several cookies separated by ","
-        (dolist (cookie (http-cookies-split-string header-value ?\,))
-          (http-cookies-parse-cookie cookie))))))
+        (dolist (raw-cookie (http-cookies-split-string header-value ?\,))
+          (setq cookie (http-cookies-parse-cookie raw-cookie))
+          (http-cookies-accept))))))
+
+
+
+;; extract parts of the url
+
+(defun http-cookies-hostname (url)
+  "Return the hostname of URL"
+  (unless (string-match
+           "http://\\([^/:]+\\)\\(:\\([0-9]+\\)\\)?/\\(.*/\\)?\\([^:]*\\)"
+           url)
+    (error "Cannot parse URL %s." url))
+  (match-string 1 url))
+
+(defun http-cookies-path (url)
+  "Return the path of the URL."
+  (unless (string-match
+           "http://\\([^/:]+\\)\\(:\\([0-9]+\\)\\)?/\\(.*/\\)?\\([^:]*\\)"
+           url)
+    (error "Cannot parse URL %s." url))
+  (concat "/" (or (match-string 4 url) "")))
 
 
 
 ;; functions to check the cookie (implementation of 4.3.2 of RFC 2109)
 
-(defun http-cookie-check-path (host url cookie)
-  "Return nil if the path attribute is not a prefix of th URL."
-  )
+(defun http-cookies-accept ()
+  (let ((accept t))
+    (dolist (fun http-cookies-accept-functions)
+      (when accept
+        (setq accept (funcall fun))))
+    accept))
+
+(defun http-cookie-check-path ()
+  "Return nil if the \"path\" attribute is not a prefix of th URL."
+  (let ((cookie-path (cdr (assoc "path" cookie))))
+    (if cookie-path
+        (if (string-match (concat "^" cookie-path) path)
+            t
+          (message "Rejecting cookie: path attribute \"%s\" is not a prefix\
+ of the URL %s." cookie-path url)
+          nil)
+      t)))
+
+(defun http-cookie-check-domain ()
+  "Return nil if the domain is bogus.
+Return nil if the domain does not start with a \".\" or does not contain
+an embedded dot."
+  (let ((domain (cdr (assoc "domain" cookie))))
+    (if domain
+        (if (string-match "^\\.[^.]+\\.[^.]+" domain)
+            t
+          (message "Rejection cookie: domain \"%s\" does not start with a dot\
+ or does not contain an embedded dot." domain)
+          nil)
+      t)))
+
+(defun http-cookie-check-hostname ()
+  "Return nil if the domain doesn't match the host.
+Return nil if the domain attribute does not match the host name or the
+host name without the domain attribute still contains one or more dots."
+  ;; FIXME: hostname might be an IP address
+  (let ((domain (cdr (assoc "domain" cookie))))
+    (if (not domain)
+        t
+      (when (string-match (concat domain "$") host)
+        (not (http-find-char-in-string
+              ?\. (substring host 0 (match-beginning 0))))))))
+
+
 
 (provide 'http-cookies)
 

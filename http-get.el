@@ -150,6 +150,9 @@ This is set by the function `http-headers'.")
 (defvar http-host ""
   "The host to which we have sent the request.")
 
+(defvar http-url ""
+  "The requested URL.")
+
 (defun http-parser ()
   "Simple parser for http message.
 Parse the status line, headers and chunk."
@@ -201,7 +204,7 @@ Parse the status line, headers and chunk."
 	      (setq parsed-string (substring parsed-string end-headers))
               ;; set cookies
               (when http-emacs-use-cookies
-                  (http-cookies-set http-host http-headers)))
+                  (http-cookies-set http-url http-headers)))
 	  ;; we don't have all the headers yet
 	  (setq http-not-yet-parsed parsed-string)
 	  (setq parsed-string "")))
@@ -355,7 +358,7 @@ use `decode-coding-region' and get the coding system to use from
     (unless (string-match
 	     "http://\\([^/:]+\\)\\(:\\([0-9]+\\)\\)?/\\(.*/\\)?\\([^:]*\\)"
              url)
-      (error "Cannot parse URL %s" url))
+      (error "Cannot parse URL %s." url))
     (unless bufname
       (setq bufname (format "*HTTP GET %s *" url)))
 
@@ -369,12 +372,18 @@ use `decode-coding-region' and get the coding system to use from
                 (concat "HTTP GET " url) buf
                 (if http-proxy-host http-proxy-host host)
                 (if http-proxy-port http-proxy-port port) ))
-    (with-current-buffer buf (set (make-local-variable 'http-host) host))
+    (with-current-buffer buf
+      (set (make-local-variable 'http-host) host)
+      (set (make-local-variable 'http-url) url))
     (if sentinel
 	(set-buffer buf)
       (switch-to-buffer buf))
     (erase-buffer)
+    ;; what is this good for?
     (kill-all-local-variables)
+    (with-current-buffer buf
+      (set (make-local-variable 'http-host) host)
+      (set (make-local-variable 'http-url) url))
     (if content-type
 	(setq file
 	      (replace-regexp-in-string
