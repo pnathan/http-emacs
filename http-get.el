@@ -105,7 +105,8 @@ for places where you can do your own stuff such as HTML rendering.
 Argument PROC the proccess that is filtered.
 Argument STRING The string outputed byte process."
   ;; emacs seems to screw this sometimes
-  (setq string (string-make-unibyte string))
+  (when (fboundp 'string-make-unibyte)
+    (setq string (string-make-unibyte string)))
   (with-current-buffer (process-buffer proc)
     (let ((moving (= (point) (process-mark proc))))
       (save-excursion
@@ -263,8 +264,9 @@ Argument HEADER-STRING A string containing a header list."
 
 (defun http-decode-buffer ()
   "Decode buffer according to the buffer local variable `http-coding'."
-  (when (multibyte-string-p (decode-coding-string "test" http-coding))
-    (set-buffer-multibyte t))
+  (when (fboundp 'set-buffer-multibyte)
+    (when (multibyte-string-p (decode-coding-string "test" http-coding))
+      (set-buffer-multibyte t)))
   (decode-coding-region (point-min) (point-max) http-coding))
 
 ;; Debugging
@@ -384,13 +386,38 @@ use `decode-coding-region' and get the coding system to use from
     (set-process-coding-system proc 'binary 'binary) ; we need \r\n
     ;; we need this to be able to correctly decode the buffer with
     ;; decode-coding-region later
-    (with-current-buffer buf (set-buffer-multibyte nil))
+    (when (fboundp 'set-buffer-multibyte)
+      (with-current-buffer buf (set-buffer-multibyte nil)))
     (set-process-filter proc 'http-filter)
     (set-marker (process-mark proc) (point-max))
     (process-send-string proc command)
 
     proc))
 
+
+;; needed for xemacs c&p from gnu emacs cvs sources
+(unless (fboundp 'replace-regexp-in-string)
+  (defun replace-regexp-in-string (regexp rep string &optional
+                                          fixedcase literal subexp start)
+    (let ((l (length string))
+          (start (or start 0))
+          matches str mb me)
+      (save-match-data
+        (while (and (< start l) (string-match regexp string start))
+          (setq mb (match-beginning 0)
+                me (match-end 0))
+          (when (= me mb) (setq me (min l (1+ mb))))
+          (string-match regexp (setq str (substring string mb me)))
+          (setq matches
+                (cons (replace-match (if (stringp rep)
+                                         rep
+                                       (funcall rep (match-string 0 str)))
+                                     fixedcase literal str subexp)
+                      (cons (substring string start mb)
+                            matches)))
+          (setq start me))
+        (setq matches (cons (substring string start l) matches))
+        (apply #'concat (nreverse matches))))))
 
 (provide 'http-get)
 

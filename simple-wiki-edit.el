@@ -3,8 +3,9 @@
 ;; Copyright (C) 2002, 2003 Alex Schroeder
 
 ;; Author: Alex Schroeder <alex@gnu.org>
+;;         David Hansen <david.hansen@physik.fu-berlin.de>
 ;; Maintainer: Pierre Gaston <pierre@gaston-karlaouzou.com>
-;; Version: 1.0.13
+;; Version: 1.0.14
 ;; Keywords: hypermedia
 ;; URL: http://www.emacswiki.org/cgi-bin/wiki.pl?SimpleWikiEditMode
 
@@ -45,6 +46,8 @@
 
 ;;; Change Log:
 
+;; 1.0.14
+;;   - Fixed bug in `simple-wiki-link-at-point'
 ;; 1.0.13
 ;;   - Added call to `http-decode' to the http-get sentinel as the http-filter
 ;;     inserts the string now as binary.
@@ -75,7 +78,7 @@
 (require 'http-get)
 (require 'simple-wiki)
 
-(defvar simple-wiki-edit-version "1.0.13")
+(defvar simple-wiki-edit-version "1.0.14")
 
 (defvar simple-wiki-url nil
   "The URL of the current buffer.")
@@ -210,7 +213,8 @@ Optional SAVE-FUNC is a function to use when saving."
 (defun simple-wiki-link-at-point ()
   "Return the wiki link at point or nil if there is none."
   ;; first check for free links as they may contain camel case
-  (let ((line (buffer-substring (point-at-bol) (point-at-eol))) str)
+  (let ((line (buffer-substring (point-at-bol) (point-at-eol)))
+        (case-fold-search nil) str)
     (when (string-match simple-wiki-free-link-pattern line)
       ;; there is a free link, is the cursor on it?
       (let ((pos-in-line (- (point) (point-at-bol))))
@@ -220,16 +224,15 @@ Optional SAVE-FUNC is a function to use when saving."
           (setq str (replace-regexp-in-string
                      "[ \t]" "_" (match-string 1 line))))))
     (unless str
-      (setq str (word-at-point))
-      (when (string-match simple-wiki-link-pattern str)
-        (setq str(match-string 1 str))))
+      (let ((word (word-at-point)))
+        (when (string-match simple-wiki-link-pattern word)
+          (setq str (match-string 1 word)))))
     str))
 
 (defun simple-wiki-follow ()
   "Follow the WikiName at point."
   (interactive)
-  (let ((page (simple-wiki-link-at-point))
-	(case-fold-search nil))
+  (let (page (simple-wiki-link-at-point))
     (if page
         (simple-wiki-edit (simple-wiki-link page)
                           simple-wiki-save-function

@@ -3,8 +3,9 @@
 ;; Copyright (C) 2002, 2003  Alex Schroeder
 
 ;; Author: Alex Schroeder <alex@gnu.org>
+;;         David Hansen <david.hansen@physik.fu-berlin.de>
 ;; Maintainer: Pierre Gaston <pierre@gaston-karlaouzou.com>
-;; Version: 1.0.4
+;; Version: 1.0.5
 ;; Keywords: hypermedia
 ;; URL: http://www.emacswiki.org/cgi-bin/wiki.pl?SimpleWikiEditMode
 
@@ -33,8 +34,10 @@
 ;;
 ;; (add-to-list 'auto-mode-alist '("w3mtmp" . simple-wiki-mode))
 
-;;; ChangeLog:
+;;; Change Log:
 
+;; 1.0.5
+;;   - Added some xemacs compatibility.
 ;; 1.0.4
 ;;   - Added face for local links
 ;;   - highlight of free links
@@ -47,19 +50,25 @@
 
 ;;; Code:
 
-;; don't remove this pattern.  Might be useful to match camel case
-;; in pre emacs 21 or xemacs.
-;; "\\<[A-Z\xc0-\xde]+[a-z\xdf-\xff]+\\([A-Z\xc0-\xde]+[a-z\xdf-\xff]*\\)+\\>"
-
 (require 'font-lock)
 
-(defconst simple-wiki-link-pattern
-  "\\<\\([A-Z]+?[[:lower:][:nonascii:]]+?[A-Z][[:lower:][:upper:]]*\\)"
-  "The pattern used for finding camel case links.")
+(if (featurep 'xemacs) ;; xemacs doesn't know character classes
+    (defconst simple-wiki-link-pattern
+      ;; c&p from oddmuse sources, weird doesn't work perfectly so use
+      ;; a different for gnu emacs
+      "\\<\\([A-Z]+[a-z\x80-\xff]+[A-Z][A-Za-z\x80-\xff]*\\)"
+      "The pattern used for finding camel case links.")
+  (defconst simple-wiki-link-pattern
+    "\\<\\([A-Z]+?[[:lower:][:nonascii:]]+?[A-Z][[:lower:][:upper:]]*\\)"
+    "The pattern used for finding camel case links."))
 
 (defconst simple-wiki-free-link-pattern
   "\\[\\[\\([^\n]+?\\)\\]\\]"
   "The Pattern used for finding free links.")
+
+(defconst simple-wiki-smilies-pattern
+  "[ \t]\\(:-?D\\|:-?)\\|;-?\)\\|:-?]\\|8-\)\\|:-\\\\|\\|:-?[/\\\\]\\|:-?(\\|:-?{\\)\\W"
+  "The pattern used to match smilies.")
 
 ;; custom groups
 (defgroup simple-wiki ()
@@ -69,74 +78,146 @@
   "Faces simple-wiki-mode." :group 'simple-wiki)
 
 ;; faces
-(defface simple-wiki-heading-1-face
-  '((((type tty pc) (class color)) (:foreground "yellow" :weight bold))
-    (t (:height 1.2 :inherit simple-wiki-heading-2-face)))
-  "Face for WiKi headings at level 1."
-  :group 'simple-wiki-faces)
 
-(defface simple-wiki-heading-2-face
-  '((((type tty pc) (class color)) (:foreground "lightblue" :weight bold))
-    (t (:height 1.2 :inherit simple-wiki-heading-3-face)))
-  "Face for WiKi headings at level 2."
-  :group 'simple-wiki-faces)
+;; xemacs doesn't know about :inherit.  Just set all heading to bold.
+(if (featurep 'xemacs)
+    (progn
+      (defface simple-wiki-heading-1-face
+        '((t (:weight bold)))
+        "Face for WiKi headings at level 1."
+        :group 'simple-wiki-faces)
 
-(defface simple-wiki-heading-3-face
-  '((((type tty pc) (class color)) (:weight bold))
-    (t (:height 1.2 :inherit simple-wiki-heading-4-face)))
-  "Face for WiKi headings at level 3."
-  :group 'simple-wiki-faces)
+      (defface simple-wiki-heading-2-face
+        '((t (:weight bold)))
+        "Face for WiKi headings at level 2."
+        :group 'simple-wiki-faces)
 
-(defface simple-wiki-heading-4-face
-  '((((type tty pc) (class color)) (:weight bold))
-    (t (:weight bold :inherit variable-pitch)))
-  "Face for WiKi headings at level 4."
-  :group 'simple-wiki-faces)
+      (defface simple-wiki-heading-3-face
+        '((t (:weight bold)))
+        "Face for WiKi headings at level 3."
+        :group 'simple-wiki-faces)
 
-(defface simple-wiki-heading-5-face
-  '((((type tty pc) (class color)) (:weight bold))
-    (t (:weight bold :inherit variable-pitch)))
-  "Face for WiKi headings at level 5."
-  :group 'simple-wiki-faces)
+      (defface simple-wiki-heading-4-face
+        '((t (:weight bold)))
+        "Face for WiKi headings at level 4."
+        :group 'simple-wiki-faces)
 
-(defface simple-wiki-heading-6-face
-  '((((type tty pc) (class color)) (:weight bold))
-    (t (:weight bold :inherit variable-pitch)))
-  "Face for WiKi headings at level 6."
-  :group 'simple-wiki-faces)
+      (defface simple-wiki-heading-5-face
+        '((t (:weight bold)))
+        "Face for WiKi headings at level 5."
+        :group 'simple-wiki-faces)
 
-(defface simple-wiki-emph-face
-  '((t (:slant italic)))
-  "Face for ''emphasis''"
-  :group 'simple-wiki-faces)
+      (defface simple-wiki-heading-6-face
+        '((t (:weight bold)))
+        "Face for WiKi headings at level 6."
+        :group 'simple-wiki-faces))
 
-(defface simple-wiki-strong-face
-  '((t (:weight bold)))
-  "Face for '''strong emphasis'''"
-  :group 'simple-wiki-faces)
+  (defface simple-wiki-heading-1-face
+    '((((type tty pc) (class color)) (:foreground "yellow" :weight bold))
+      (t (:height 1.2 :inherit simple-wiki-heading-2-face)))
+    "Face for WiKi headings at level 1."
+    :group 'simple-wiki-faces)
 
-(defface simple-wiki-italic-face
-  '((t (:slant italic)))
-  "Face for <i>italic</i>"
-  :group 'simple-wiki-faces)
+  (defface simple-wiki-heading-2-face
+    '((((type tty pc) (class color)) (:foreground "lightblue" :weight bold))
+      (t (:height 1.2 :inherit simple-wiki-heading-3-face)))
+    "Face for WiKi headings at level 2."
+    :group 'simple-wiki-faces)
 
-(defface simple-wiki-bold-face
-  '((t (:weight bold)))
-  "Face for <b>bold</b>"
-  :group 'simple-wiki-faces)
+  (defface simple-wiki-heading-3-face
+    '((((type tty pc) (class color)) (:weight bold))
+      (t (:height 1.2 :inherit simple-wiki-heading-4-face)))
+    "Face for WiKi headings at level 3."
+    :group 'simple-wiki-faces)
+
+  (defface simple-wiki-heading-4-face
+    '((((type tty pc) (class color)) (:weight bold))
+      (t (:weight bold :inherit variable-pitch)))
+    "Face for WiKi headings at level 4."
+    :group 'simple-wiki-faces)
+
+  (defface simple-wiki-heading-5-face
+    '((((type tty pc) (class color)) (:weight bold))
+      (t (:weight bold :inherit variable-pitch)))
+    "Face for WiKi headings at level 5."
+    :group 'simple-wiki-faces)
+
+  (defface simple-wiki-heading-6-face
+    '((((type tty pc) (class color)) (:weight bold))
+      (t (:weight bold :inherit variable-pitch)))
+    "Face for WiKi headings at level 6."
+    :group 'simple-wiki-faces))
+
+(if (featurep 'xemacs)
+    (defface simple-wiki-emph-face
+      '((t (:italic t)))
+      "Face for ''emphasis''"
+      :group 'simple-wiki-faces)
+  (defface simple-wiki-emph-face
+    '((t (:slant italic)))
+    "Face for ''emphasis''"
+    :group 'simple-wiki-faces))
+
+(if (featurep 'xemacs)
+    (defface simple-wiki-strong-face
+      '((t (:bold t)))
+      "Face for '''strong emphasis'''"
+      :group 'simple-wiki-faces)
+  (defface simple-wiki-strong-face
+    '((t (:weight bold)))
+    "Face for '''strong emphasis'''"
+    :group 'simple-wiki-faces))
+
+(if (featurep 'xemacs)
+    (defface simple-wiki-strong-emph-face
+      '((t (:bold t :italic t)))
+      "Face for '''strong emphasis'''"
+      :group 'simple-wiki-faces)
+  (defface simple-wiki-strong-emph-face
+    '((t (:weight bold :slant italic)))
+    "Face for '''strong emphasis'''"
+    :group 'simple-wiki-faces))
+
+(if (featurep 'xemacs)
+    (defface simple-wiki-italic-face
+      '((t (:italic t)))
+      "Face for <i>italic</i>"
+      :group 'simple-wiki-faces)
+  (defface simple-wiki-italic-face
+    '((t (:slant italic)))
+    "Face for <i>italic</i>"
+    :group 'simple-wiki-faces))
+
+(if (featurep 'xemacs)
+    (defface simple-wiki-bold-face
+      '((t (:bold t)))
+      "Face for <b>bold</b>"
+      :group 'simple-wiki-faces)
+  (defface simple-wiki-bold-face
+    '((t (:weight bold)))
+    "Face for <b>bold</b>"
+    :group 'simple-wiki-faces))
 
 (defface simple-wiki-underline-face
   '((t (:underline t)))
   "Face for <u>underline</u>"
   :group 'simple-wiki-faces)
 
-(defface simple-wiki-local-link-face
-  '((((class color) (background dark))
-     (:foreground "skyblue3" :weight bold))
-    (((class color) (background light))
-     (:foreground "royal blue" :weight bold)))
-  "Face for links to pages on the same wiki."
-  :group 'simple-wiki-faces)
+(if (featurep 'xemacs)
+    (defface simple-wiki-local-link-face
+      '((((class color) (background dark))
+         (:foreground "skyblue3" :bold t))
+        (((class color) (background light))
+         (:foreground "royal blue" :bold t)))
+      "Face for links to pages on the same wiki."
+      :group 'simple-wiki-faces)
+  (defface simple-wiki-local-link-face
+    '((((class color) (background dark))
+       (:foreground "skyblue3" :weight bold))
+      (((class color) (background light))
+       (:foreground "royal blue" :weight bold)))
+    "Face for links to pages on the same wiki."
+    :group 'simple-wiki-faces))
 
 (defface simple-wiki-teletype-face
   '((((class color) (background dark)) (:background "grey15"))
@@ -157,6 +238,22 @@
      (:foreground "DarkGoldenRod2")))
   "Face for links to pages on the same wiki."
   :group 'simple-wiki-faces)
+
+(if (featurep 'xemacs)
+    (defface simple-wiki-smiley-face
+      '((((class color) (background dark))
+         (:foreground "gold" :bold t))
+        (((class color) (background light))
+         (:foreground "goldenrod" :bold t)))
+      "Face for links to pages on the same wiki."
+      :group 'simple-wiki-faces)
+  (defface simple-wiki-smiley-face
+    '((((class color) (background dark))
+       (:foreground "gold" :weight bold))
+      (((class color) (background light))
+       (:foreground "goldenrod" :weight bold)))
+    "Face for links to pages on the same wiki."
+    :group 'simple-wiki-faces))
 
 (defconst simple-wiki-font-lock-keywords
   (list
@@ -185,14 +282,22 @@
    '("^\\:\\(\\:+\\)" (0 font-lock-comment-face))          ; indent
    '("^\\(\\:\\)[^\\:]" (1 font-lock-string-face))         ; indent
 
+   ;; smilies
+   (cons simple-wiki-smilies-pattern '(1 'simple-wiki-smiley-face t))
+
    ;; emphasis (maybe be multi lines, but this seems to work fine
-   '(simple-wiki-match-emph-classic . 'simple-wiki-emph-face)
-   '(simple-wiki-match-strong-classic . 'simple-wiki-strong-face)
+   '(simple-wiki-match-emph-classic
+     . (0 'simple-wiki-emph-face prepend))
+   '(simple-wiki-match-strong-classic
+     . (0 'simple-wiki-strong-face prepend))
+   '(simple-wiki-match-strong-emph-classic
+     . (0 'simple-wiki-strong-emph-face prepend))
 
    ;; local links (must be in one line)
    (cons simple-wiki-free-link-pattern
          '(1 'simple-wiki-local-link-face prepend))
-   (cons simple-wiki-link-pattern '(0 'simple-wiki-local-link-face prepend))
+   (cons simple-wiki-link-pattern
+         '(0 'simple-wiki-local-link-face prepend))
 
    '(simple-wiki-match-italic . (0 'simple-wiki-italic-face prepend))
    '(simple-wiki-match-bold . (0 'simple-wiki-bold-face prepend))
@@ -205,10 +310,8 @@
    '(simple-wiki-match-code-tag . (0 'simple-wiki-code-face t))
    '(simple-wiki-match-pre . (0 'simple-wiki-code-face t))
 
-   '("^[\t ]+[^\t \n]"
-     (simple-wiki-match-code (simple-wiki-check-in-code-block)
-                             (setq simple-wiki-in-code-block nil)
-                             (0 'simple-wiki-code-face t)))
+   '(simple-wiki-match-code-block . (0 'simple-wiki-code-face t))
+
    ;; should be the last
    '(simple-wiki-match-nowiki . (0 'simple-wiki-nowiki-face t))))
 
@@ -246,6 +349,15 @@
   (when (re-search-forward "\\('''\\)[^']" limit t)
     (let ((beg (match-end 1)) end)
       (if (re-search-forward "'''+" limit t)
+          (setq end (match-beginning 0))
+        (setq end (point)))
+      (store-match-data (list beg end))
+      t)))
+
+(defun simple-wiki-match-strong-emph-classic (limit)
+  (when (re-search-forward "\\('''''\\)[^']" limit t)
+    (let ((beg (match-end 1)) end)
+      (if (re-search-forward "'''''+" limit t)
           (setq end (match-beginning 0))
         (setq end (point)))
       (store-match-data (list beg end))
@@ -290,22 +402,26 @@ If we are in a code block return the point of the end of the block."
   ;;        (a) code starts directly after a heading.
   (setq simple-wiki-in-code-block nil)
   (save-excursion
-    ;; FIXME: this is problematic when the line before the paragraph
-    ;; contains one or more whitespaces.
     (backward-paragraph)
-    (forward-line 1)
+    (when (string-match "^$" (buffer-substring (point-at-bol) (point-at-eol)))
+      (forward-line 1))
     (let ((char (char-after (point))))
       (when (and char (or (= char ?\t) (= char ? )))
         (setq simple-wiki-in-code-block t)
         (forward-paragraph)
         (point)))))
 
-(defun simple-wiki-match-code (limit)
-  (when simple-wiki-in-code-block
-    (store-match-data (list (point-at-bol) limit))
-    (goto-char limit)
-    t))
-
+(defun simple-wiki-match-code-block (limit)
+  (let (beg end)
+    (when (re-search-forward "^[ \t]+[^ \t\n]" limit t)
+      (setq beg (match-beginning 0))
+      (setq end (simple-wiki-check-in-code-block))
+      (when simple-wiki-in-code-block
+        ;; (when (> end limit) (setq end limit))
+        (if  (<= end beg)
+            nil
+          (store-match-data (list beg end))
+          t)))))
 
 (provide 'simple-wiki)
 
