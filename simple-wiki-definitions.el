@@ -45,7 +45,7 @@
 
 (defcustom swd-wiki-defs-list
   '(("ew"
-     "http://www.emacswiki.org/cgi-bin/wiki.pl"
+     "http://www.emacswiki.org/cgi-bin/wiki"
      "?action=browse&raw=2&id="
      "?action=index&raw=1"
      "?action=rc&raw=1"
