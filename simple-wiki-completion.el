@@ -7,7 +7,7 @@
 ;; Author: D. Goel <deego@glue.umd.edu>
 ;; Maintainer: Pierre Gaston <pierre@gaston-karlaouzou.com>
 ;; Keywords:
-;; Version: 1.0.10
+;; Version: 1.0.11
 ;; Author's homepage: http://gnufans.net/~deego
 ;; For latest version:
 (defconst simple-wiki-completion-home-page
@@ -36,10 +36,12 @@
 
 ;;; ChangeLog:
 
+;; 1.0.11
+;;   - Removed `swc-follow' as it doesn't extend `simple-wiki-follow'
 ;; 1.0.10
 ;;   - Added "Connection: close" header to http-get call for HTTP/1.1.
-;;   - Moved custom variable to group simple-wiki
-;;   - Removed swc-summary-default
+;;   - Moved custom variable to group simple-wiki.
+;;   - Removed swc-summary-default.
 ;; 1.0.9
 ;;   - Fixed bugs and the look of http-get version of building completion.
 ;; 1.0.8
@@ -54,11 +56,7 @@
 ;;   - Move buffer renaming in a hook to keep working with open and follow
 ;;     functions.
 
-
-;; See also:
-
-;;==========================================
-;;; Requires:
+;;; Code:
 
 (eval-when-compile (require 'cl))
 (require 'http-get)
@@ -66,9 +64,6 @@
 (require 'simple-wiki-definitions)
 (require 'simple-wiki-edit)
 (require 'simple-wiki)
-
-;; Code:
-;;; Real Code:
 
 (defvar simple-wiki-completion-version "1.0.10")
 
@@ -83,9 +78,8 @@
 Is a list of the form 
  ((code1 ((pg1) (pg2) (pg3...))  (code2 .....)) ")
 
-;;redefine the open function to take advantage of completions
+;; redefine the open function to take advantage of completions
 (define-key simple-wiki-edit-mode-map (kbd "C-c C-o") 'swc-open)
-;; (define-key simple-wiki-edit-mode-map (kbd "C-c C-g") 'swc-follow)
 
 ;; hooks for renaming the buffers  and setting current wiki nickname
 (add-hook 'simple-wiki-edit-mode-hook 'rename-hook)
@@ -195,23 +189,7 @@ Not to be confused with `swc-pages'")
      (simple-wiki-link page) simple-wiki-save-function nil
      (swd-http-version nick) (swd-http-coding nick))))
 
-;; obsolete, remove it
-(defun swc-follow ()
-  "Follow the WikiName at point."
-  (interactive)
-  (let ((page (word-at-point))
-	(case-fold-search nil)
-	(nick (swd-nick simple-wiki-url)))
-    (if (and page
-	     (string-match
-	      simple-wiki-link-pattern
-	      page))
-	(simple-wiki-edit
-         (simple-wiki-link page) simple-wiki-save-function
-         nil (swd-http-version nick) (swd-http-coding nick))
-      (error "No WikiName at point"))))
-
-(defun swc-browse ( &optional nick page)
+(defun swc-browse (&optional nick page)
    (interactive)
    (if (not nick)
        (setq nick (read-from-minibuffer "Nickname: ")))

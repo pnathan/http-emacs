@@ -134,10 +134,14 @@ This is set by the function `http-headers'.")
 (make-local-variable 'http-not-yet-parsed)
 
 
+;; Do we really need the string-bytes function here?  As far as i understand
+;; everything happens with binary encoding and string-bytes break xemacs
+;; compat.
+
 (defun http-parser ()
   "Simple parser for http message.
 Parse the status line, headers and chunk"
-  (let ((parsed-string (concat http-not-yet-parsed string )) content-type)
+  (let ((parsed-string (concat http-not-yet-parsed string)) content-type)
     (setq string "")
     (setq http-not-yet-parsed "")
     (while (> (string-bytes parsed-string) 0)
@@ -164,7 +168,7 @@ Parse the status line, headers and chunk"
           (setq parsed-string "")))
 
        ((eq http-parser-state 'header)
-	;;parsing headers
+	;; parsing headers
 	(if (string-match "\r\n\r\n" parsed-string)
 	    (let ((end-headers (match-end 0)))
 	      (set (make-local-variable 'http-headers)
@@ -181,7 +185,7 @@ Parse the status line, headers and chunk"
 		(set (make-local-variable 'http-coding)
 		     (intern-soft (downcase (match-string 1 content-type)))))
 	      (setq parsed-string (substring parsed-string end-headers)))
-	  ;;we don't have all the headers yet
+	  ;; we don't have all the headers yet
 	  (setq http-not-yet-parsed parsed-string)
 	  (setq parsed-string "")))
 
@@ -213,7 +217,7 @@ Parse the status line, headers and chunk"
                 ;; we don't have the next chunk-size yet
 		(setq http-not-yet-parsed parsed-string)
 		(setq parsed-string "")))
-	  ;;the current chunk is not finished yet
+	  ;; the current chunk is not finished yet
 	  (setq string  (concat string parsed-string))
 	  (setq http-unchunk-chunk-size
                 (- http-unchunk-chunk-size (string-bytes parsed-string)))

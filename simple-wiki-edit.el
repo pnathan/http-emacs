@@ -4,7 +4,7 @@
 
 ;; Author: Alex Schroeder <alex@gnu.org>
 ;; Maintainer: Pierre Gaston <pierre@gaston-karlaouzou.com>
-;; Version: 1.0.8
+;; Version: 1.0.11
 ;; Keywords: hypermedia
 ;; URL: http://www.emacswiki.org/cgi-bin/wiki.pl?SimpleWikiEditMode
 
@@ -45,6 +45,8 @@
 
 ;;; ChaneLog:
 
+;; 1.0.11
+;;   - Added support for free links
 ;; 1.0.10
 ;;   - Added support for links with non ASCII chars.
 ;; 1.0.9
@@ -68,7 +70,7 @@
 (require 'http-get)
 (require 'simple-wiki)
 
-(defvar simple-wiki-edit-version "1.0.9")
+(defvar simple-wiki-edit-version "1.0.11")
 
 (defvar simple-wiki-url nil
   "The URL of the current buffer.")
@@ -113,7 +115,9 @@ pressing C-c C-t during edits."
 \\{simple-wiki-edit-mode-map}"
   (make-local-variable 'simple-wiki-url)
   (make-local-variable 'simple-wiki-time)
-  (make-local-variable 'simple-wiki-save-function))
+  (make-local-variable 'simple-wiki-save-function)
+  (make-local-variable 'simple-wiki-http-version)
+  (make-local-variable 'simple-wiki-content-type))
 
 
 (define-key simple-wiki-edit-mode-map (kbd "C-c C-c") 'simple-wiki-save)
@@ -197,17 +201,23 @@ Optional SAVE-FUNC is a function to use when saving."
       (set (make-local-variable 'simple-wiki-content-type) content-type)
       (set (make-local-variable 'simple-wiki-save-function) save-func))))
 
-(defun dh-sw-link ()
-  (interactive)
-  (message (simple-wiki-link-at-point)))
-
 (defun simple-wiki-link-at-point ()
   "Return the wiki link at point or nil if there is none."
-  (let ((str (word-at-point)))
-    (if (string-match simple-wiki-link-pattern str)
-        (match-string 1 str)
-      nil)))
-
+  ;; first check for free links as they may contain camel case
+  (let ((line (buffer-substring (point-at-bol) (point-at-eol))) str)
+    (when (string-match simple-wiki-free-link-pattern line)
+      ;; there is a free link, is the cursor on it?
+      (let ((pos-in-line (- (point) (point-at-bol))))
+        (when (and (>=  pos-in-line (match-beginning 0))
+                   (<=  pos-in-line (match-end 0)))
+          ;; we are on a free link
+          (setq str (replace-regexp-in-string
+                     "[ \t]" "_" (match-string 1 line))))))
+    (unless str
+      (setq str (word-at-point))
+      (when (string-match simple-wiki-link-pattern str)
+        (setq str(match-string 1 str))))
+    str))
 
 (defun simple-wiki-follow ()
   "Follow the WikiName at point."

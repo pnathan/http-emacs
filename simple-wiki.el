@@ -4,7 +4,7 @@
 
 ;; Author: Alex Schroeder <alex@gnu.org>
 ;; Maintainer: Pierre Gaston <pierre@gaston-karlaouzou.com>
-;; Version: 1.0.3
+;; Version: 1.0.4
 ;; Keywords: hypermedia
 ;; URL: http://www.emacswiki.org/cgi-bin/wiki.pl?SimpleWikiEditMode
 
@@ -33,8 +33,11 @@
 ;;
 ;; (add-to-list 'auto-mode-alist '("w3mtmp" . simple-wiki-mode))
 
-;; ChangeLog:
+;;; ChangeLog:
 
+;; 1.0.4
+;;   - Added face for local links
+;;   - highlight of free links
 ;; 1.0.3
 ;;   - Changed `simple-wiki-link-pattern'.  Non ASCII chars should work now.
 ;; 1.0.2
@@ -44,18 +47,26 @@
 
 ;;; Code:
 
+;; don't remove this pattern.  Might be useful to match camel case
+;; in pre emacs 21 or xemacs.
+;; "\\<[A-Z\xc0-\xde]+[a-z\xdf-\xff]+\\([A-Z\xc0-\xde]+[a-z\xdf-\xff]*\\)+\\>"
+
 (defconst simple-wiki-link-pattern
-;;  "\\<[A-Z\xc0-\xde]+[a-z\xdf-\xff]+\\([A-Z\xc0-\xde]+[a-z\xdf-\xff]*\\)+\\>"
   "\\<\\([A-Z][[:lower:][:upper:]]+?[A-Z][[:lower:]]+[[:lower:][:upper:]]*\\)"
-  "The pattern used for finding WikiName.")
+  "The pattern used for finding camel case links.")
 
+(defconst simple-wiki-free-link-pattern
+  "\\[\\[\\([^\n]+\\)\\]\\]"
+  "The Pattern used for finding free links.")
 
+;; custom groups
 (defgroup simple-wiki ()
   "Edit raw wiki pages.")
 
 (defgroup mldonkey-faces ()
   "Faces simple-wiki-mode." :group 'simple-wiki)
 
+;; faces
 (defface simple-wiki-heading-1-face
   '((((type tty pc) (class color)) (:foreground "yellow" :weight bold))
     (t (:height 1.2 :inherit simple-wiki-heading-2-face)))
@@ -117,6 +128,14 @@
   "Face for <u>underline</u>"
   :group 'simple-wiki-faces)
 
+(defface simple-wiki-local-link-face
+  '((((class color) (background dark))
+     (:foreground "light sky blue" :weight bold))
+    (((class color) (background light))
+     (:foreground "royal blue" :weigth bold)))
+  "Face for links to pages on the same wiki."
+  :group 'simple-wiki-faces)
+
 (defface simple-wiki-teletype-face
   '((((class color) (background dark)) (:background "grey15"))
     (((class color) (background light)) (:background "moccasin")))
@@ -168,6 +187,10 @@
    '(simple-wiki-match-emph . 'simple-wiki-emph-face)
    '(simple-wiki-match-strong . 'simple-wiki-strong-face)
 
+   ;; local links
+   (cons simple-wiki-free-link-pattern '(1 'simple-wiki-local-link-face))
+   (cons simple-wiki-link-pattern ''simple-wiki-local-link-face)
+
    ;; code blocks
    '("^[\t ]" (simple-wiki-match-code (simple-wiki-check-in-code-block) nil
                                       (0 'simple-wiki-code-face t)))))
@@ -179,12 +202,6 @@
   (make-local-variable 'font-lock-defaults)
   (setq font-lock-defaults  '(simple-wiki-font-lock-keywords t))
 
-  ;; FIXME: how to get this into `simple-wiki-font-lock-keywords'?
-  (font-lock-add-keywords
-   nil
-   (list (cons (symbol-value 'simple-wiki-link-pattern)
-               'font-lock-keyword-face)))
-
   (font-lock-mode 1)
   (goto-address)
   (set (make-local-variable 'sgml-tag-alist)
@@ -194,8 +211,7 @@
   (setq indent-tabs-mode nil))
 
 
-(defvar simple-wiki-in-code-block nil
-  "")
+(defvar simple-wiki-in-code-block nil)
 
 
 (defun simple-wiki-match-taged (limit tag)
@@ -261,6 +277,8 @@ If we are in a code block return the point of the end of the block."
   ;;        (a) code starts directly after a heading.
   (setq simple-wiki-in-code-block nil)
   (save-excursion
+    ;; FIXME: this is problematic when the line before the paragraph
+    ;; contains one or more whitespaces.
     (backward-paragraph)
     (forward-line 1)
     (let ((char (char-after (point))))
