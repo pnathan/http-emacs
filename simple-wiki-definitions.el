@@ -43,6 +43,13 @@
 
 (require 'simple-wiki-edit)
 
+
+(defvar swd-nick "dummy")
+
+;;; This below would be ideal, permitting additional-headers
+;;; consistency while the user edits multiple wikis at the same time.
+;;;(make-variable-buffer-local 'swd-nick)
+
 (defcustom swd-wiki-defs-list
   '(("ew"
      "http://www.emacswiki.org/cgi-bin/wiki"
@@ -123,7 +130,9 @@ grok them.  Note that this is distinct from the third field.
   ;; destroy the edited page.  To prevent users can do this reload
   ;; the page.
   (simple-wiki-edit simple-wiki-url simple-wiki-save-function nil
-                    simple-wiki-http-version simple-wiki-content-type))
+                    simple-wiki-http-version simple-wiki-content-type
+		    (swd-additional-headers swd-nick)
+		    ))
 
 (defun swd-usemod-wiki-save ()
   "Save the current page to a UseMod wiki."
@@ -132,10 +141,10 @@ grok them.  Note that this is distinct from the third field.
         (link (simple-wiki-save-link))
         (http-version (swd-http-version (swd-nick simple-wiki-url)))
         (content-type (swd-http-coding (swd-nick simple-wiki-url)))
-        (headers (swd-additional-headers nick))
+        (headers (swd-additional-headers swd-nick))
 	(proc))
     (when (and http-version (= http-version 1.1))
-      (setq headers (append headers '(("Connection" . "close")))))
+      (setq headers (append  '(("Connection" . "close")) headers)))
     (setq proc (http-post
                 link
                 (list (cons "title" (simple-wiki-page))

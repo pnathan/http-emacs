@@ -1,5 +1,5 @@
 ;;; simple-wiki-completion.el ---
-;; Time-stamp: <2004-11-21 14:28:58 deego>
+;; Time-stamp: <2004-11-21 15:17:19 deego>
 ;; Copyright (C) 2003 D. Goel
 ;; Emacs Lisp Archive entry
 ;; Filename: simple-wiki-completion.el
@@ -131,8 +131,8 @@ Is a list of the form
              (progress-bar "Building completions: "))
     (when (and http-version (= http-version 1.1))
       ;;(setq headers '(("Connection" . "close")))
-      (setq headers (append headers
-			    '(("Connection" . "close"))))
+      (setq headers (append 
+			    '(("Connection" . "close")) headers))
       )
     (setq proc (http-get refpage headers
                          (lambda (proc message) nil) (swd-http-version nick)))
@@ -219,6 +219,8 @@ Not to be confused with `swc-pages'")
       (swd-http-coding nick)
       (swd-additional-headers nick)
       )
+     ;; set the buffer-local nick, so it can be used when committing.
+     (setq swd-nick nick)
      (setq swc-pages-completion swc-tmp-pages)))
 
 ;;;###autoload

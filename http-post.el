@@ -56,6 +56,8 @@
 You can get the buffer associated with this process using 
 `process-buffer'.
 
+
+
 PARAMETERS is an alist of parameters to use.  Each element has the
 form \(NAME . VALUE).  These usually correspond to successful controls
 on HTML forms.
@@ -146,6 +148,8 @@ use `decode-coding-region' and get the coding system to use from
 		  (format "; charset=%s\r\n"
 			  (upcase (symbol-name content-type)))
 		  (format "Content-Length: %d\r\n" (length body))))
+    
+
     (when http-emacs-use-cookies
       (let ((cookie (http-cookies-build-header url)))
         (when cookie (add-to-list 'headers cookie))))
