@@ -38,6 +38,7 @@
 ;;   - made `http-parse-headers' RFC 2616 compatible (removing whitespaces,
 ;;     headers may spawn several line)
 ;;   - log message headers
+;;   - made most variables buffer local with `make-variable-buffer-local'
 ;; 1.0.14
 ;;   - Removed attempt to fix bug in 1.0.12, not needed anymore since 1.0.13.
 ;; 1.0.13
@@ -78,12 +79,11 @@
 (defvar http-proxy-port nil
   "*Port number of proxy server.  Default is 80.")
 
-;; Coding system
 (defvar http-coding 'iso-8859-1
    "Default coding to be use when the string is inserted in the buffer.
 This coding will be modified on Finding the content-type header")
+(make-variable-buffer-local 'http-coding)
 
-;; Filtering
 (defvar  http-filter-pre-insert-hook '(http-parser)
   "Hook run by the `http-filter'.
 This is called whenever a chunk of input arrives, before it is
@@ -124,35 +124,41 @@ Argument STRING is the string outputted by the process."
 	(set-marker (process-mark proc) (point)))
       (if moving (goto-char (process-mark proc))))))
 
-
-;; Dealing with
 (defvar http-status-code nil
   "The status code returned for the current buffer.
 This is set by the function `http-headers'.")
+(make-variable-buffer-local 'http-status-code)
 
 (defvar http-reason-phrase nil
   "The reason phrase returned for the `http-status-code'.
 This is set by the function `http-headers'.")
+(make-variable-buffer-local 'http-reason-phrase)
 
 (defvar http-headers nil
   "An alist of the headers that have been parsed and removed from the buffer.
 The headers are stored as an alist.
 This is set by the function `http-headers'.")
+(make-variable-buffer-local 'http-headers)
 
 (defvar http-parser-state 'status-line
   "Parser status.")
+(make-variable-buffer-local 'http-parser-state)
 
 (defvar http-unchunk-chunk-size  0
   "Size of the current unfinished chunk.")
+(make-variable-buffer-local 'http-unchunk-chunk-size)
 
 (defvar http-not-yet-parsed  ""
   "Received bytes that have not yet been parsed.")
+(make-variable-buffer-local 'http-not-yet-parsed)
 
 (defvar http-host ""
   "The host to which we have sent the request.")
+(make-variable-buffer-local 'http-host)
 
 (defvar http-url ""
   "The requested URL.")
+(make-variable-buffer-local 'http-url)
 
 (defun http-parser ()
   "Simple parser for http message.
@@ -164,23 +170,15 @@ Parse the status line, headers and chunk."
       (cond
 
        ((eq http-parser-state 'status-line)
-	;; make variable of parsers local
-        ;; FIXME: do we really need this?  why?  wouldn't it be better
-        ;; to `make-variable-buffer-local'?
-	(make-local-variable 'http-parser-state)
-	(make-local-variable 'http-not-yet-parsed)
-	(make-local-variable 'http-unchunk-chunk-size)
-        (make-local-variable 'http-coding)
 	;; parsing status line
 	(if (string-match "HTTP/[0-9.]+ \\([0-9]+\\) \\(.*\\)\r\n"
                           parsed-string)
 	    (progn
-	      (set (make-local-variable 'http-status-code)
-		   (string-to-number (match-string 1 parsed-string)))
-	      (set (make-local-variable 'http-reason-phrase)
-		   (match-string 2 parsed-string))
-	      (setq http-parser-state 'header)
-	      (setq parsed-string (substring parsed-string (match-end 0))))
+              (setq http-status-code
+                    (string-to-number (match-string 1 parsed-string)))
+              (setq http-reason-phrase (match-string 2 parsed-string))
+              (setq http-parser-state 'header)
+              (setq parsed-string (substring parsed-string (match-end 0))))
 	  ;; status line not found
           (setq http-not-yet-parsed parsed-string)
           (setq parsed-string "")))
@@ -189,9 +187,9 @@ Parse the status line, headers and chunk."
 	;; parsing headers
 	(if (string-match "\r\n\r\n" parsed-string)
 	    (let ((end-headers (match-end 0)))
-	      (set (make-local-variable 'http-headers)
-                   (http-parse-headers
-                    (substring parsed-string 0 (match-beginning 0))))
+	      (setq http-headers
+                    (http-parse-headers
+                     (substring parsed-string 0 (match-beginning 0))))
 	      (if (string= "chunked"
 			   (cdr (assoc "transfer-encoding" http-headers)))
 		  (setq http-parser-state 'chunked)
@@ -200,8 +198,8 @@ Parse the status line, headers and chunk."
 		     (setq content-type
 			   (cdr (assoc "content-type" http-headers)))
 		     (string-match "charset=\\(.*\\)" content-type))
-		(set (make-local-variable 'http-coding)
-		     (intern-soft (downcase (match-string 1 content-type)))))
+		(setq http-coding
+                      (intern-soft (downcase (match-string 1 content-type)))))
 	      (setq parsed-string (substring parsed-string end-headers))
               ;; set cookies
               (when http-emacs-use-cookies
@@ -373,18 +371,14 @@ use `decode-coding-region' and get the coding system to use from
                 (concat "HTTP GET " url) buf
                 (if http-proxy-host http-proxy-host host)
                 (if http-proxy-port http-proxy-port port) ))
-    (with-current-buffer buf
-      (set (make-local-variable 'http-host) host)
-      (set (make-local-variable 'http-url) url))
     (if sentinel
 	(set-buffer buf)
       (switch-to-buffer buf))
     (erase-buffer)
-    ;; what is this good for?
     (kill-all-local-variables)
     (with-current-buffer buf
-      (set (make-local-variable 'http-host) host)
-      (set (make-local-variable 'http-url) url))
+      (setq http-host host)
+      (setq http-url url))
     (if content-type
 	(setq file
 	      (replace-regexp-in-string
@@ -423,7 +417,7 @@ use `decode-coding-region' and get the coding system to use from
     proc))
 
 
-;; needed for xemacs c&p from gnu emacs cvs sources
+;; needed for xemacs.  c&p from gnu emacs cvs sources
 (unless (fboundp 'replace-regexp-in-string)
   (defun replace-regexp-in-string (regexp rep string &optional
                                           fixedcase literal subexp start)

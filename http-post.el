@@ -125,8 +125,8 @@ use `decode-coding-region' and get the coding system to use from
     (kill-all-local-variables)
 
     (with-current-buffer buf
-      (set (make-local-variable 'http-host) host)
-      (set (make-local-variable 'http-url) url))
+      (setq http-host host)
+      (setq http-url url))
 
     (let (result)
       (dolist (param parameters)
