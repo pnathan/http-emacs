@@ -209,7 +209,7 @@
    '("<code>"
      (simple-wiki-match-code-tag (simple-wiki-end-of-tag "code") nil
                                  (0 'simple-wiki-code-face t)))
-   '("<pre>\\($\\|.\\)"
+   '("<pre>"
      (simple-wiki-match-pre (simple-wiki-end-of-tag "pre") nil
                             (0 'simple-wiki-code-face t)))
    '("^[\t ]" (simple-wiki-match-code (simple-wiki-check-in-code-block) nil

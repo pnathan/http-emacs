@@ -31,12 +31,16 @@
 
 ;; Use `http-get' to download an URL.
 
-;;; ChangeLog:
+;;; Change log:
 
 ;; 1.0.11
+;;   - Added (setq string (string-make-unibyte string)) to http-filter
+;;     this seems to solve problems with multi byte chars.
 ;;   - Fixed bug when building the headers.
 ;;   - Fixed indentation (please guys, read the coding conventions in the
 ;;     elisp manual)
+;;   - Replaced string-bytes with length (string-bytes shouldn't be needed
+;;     anymore as we force the string to be unibyte)
 ;; 1.0.10
 ;;   - Fix some codings problems again.
 ;; 1.0.9
@@ -63,7 +67,7 @@
 
 ;; Coding sytem
 (defvar http-coding 'iso-8859-1
-   "default coding to be use when the string is inserted in the buffer
+   "Default coding to be use when the string is inserted in the buffer.
 This coding will be modified on Finding the content-type header")
 (make-local-variable 'http-coding)
 
@@ -95,6 +99,7 @@ See `http-filter-pre-insert-hook' and `http-filter-post-insert-hook'
 for places where you can do your own stuff such as HTML rendering.
 Argument PROC the proccess that is filtered.
 Argument STRING The string outputed bythe process."
+  ;; emacs seems to screw this sometimes
   (setq string (string-make-unibyte string))
   (with-current-buffer (process-buffer proc)
     (let ((moving (= (point) (process-mark proc))))
@@ -102,6 +107,8 @@ Argument STRING The string outputed bythe process."
 	" Insert the text, advancing the process marker."
 	(goto-char (process-mark proc))
 	(run-hooks 'http-filter-pre-insert-hook)
+        ;; it may be a problem if we only got a 'half' multi byte char
+        ;; FIXME: its definitively is a problem!
         (insert (decode-coding-string string http-coding))
 	(run-hooks 'http-filter-post-insert-hook)
 	(set-marker (process-mark proc) (point)))
@@ -134,10 +141,6 @@ This is set by the function `http-headers'.")
   "Received bytes that have not yet been parsed.")
 (make-local-variable 'http-not-yet-parsed)
 
-
-;; Do we really need the string-bytes function here?  As far as i understand
-;; everything happens with binary encoding and string-bytes break xemacs
-;; compat.
 
 (defun http-parser ()
   "Simple parser for http message.
@@ -223,6 +226,7 @@ Parse the status line, headers and chunk"
                 ;; (- http-unchunk-chunk-size (string-bytes parsed-string)))
                 (- http-unchunk-chunk-size (length parsed-string)))
 	  (setq parsed-string "")))
+
 
        ((eq http-parser-state 'trailer)
 	;; parsing trailer
