@@ -44,6 +44,7 @@
 
 (defconst simple-wiki-link-pattern
   "\\<[A-Z\xc0-\xde]+[a-z\xdf-\xff]+\\([A-Z\xc0-\xde]+[a-z\xdf-\xff]*\\)+\\>"
+  ;;"\\<[:upper:][:lower:]+[:upper:][:lower:]+[:word:]*\\>"
   "The pattern used for finding WikiName.")
 
 
@@ -96,11 +97,32 @@
 
 (defface simple-wiki-strong-face
   '((t (:weight bold)))
-  "Face for ''emphasis''"
+  "Face for '''strong emphasis'''"
+  :group 'simple-wiki-faces)
+
+(defface simple-wiki-italic-face
+  '((t (:slant italic)))
+  "Face for <i>italic</i>"
+  :group 'simple-wiki-faces)
+
+(defface simple-wiki-bold-face
+  '((t (:weight bold)))
+  "Face for <b>bold</b>"
+  :group 'simple-wiki-faces)
+
+(defface simple-wiki-underline-face
+  '((t (:underline t)))
+  "Face for <u>underline</u>"
+  :group 'simple-wiki-faces)
+
+(defface simple-wiki-teletype-face
+  '((((class color) (background dark)) (:background "grey10"))
+    (((class color) (background light)) (:background "moccasin")))
+  "Face for <tt>teletype</tt>."
   :group 'simple-wiki-faces)
 
 (defface simple-wiki-code-face
-  '((((class color) (background dark)) (:background "dark slate gray"))
+  '((((class color) (background dark)) (:background "grey10"))
     (((class color) (background light)) (:background "moccasin")))
   "Face for code in Wiki pages."
   :group 'simple-wiki-faces)
@@ -112,31 +134,41 @@
      (1 font-lock-constant-face)
      (2 font-lock-warning-face))
 
-   ;; headings
+   ;; headings, actually multi lines are possible but...
    '("^=\\([^\n=]+\\)=[^=]"
      (1 'simple-wiki-heading-1-face))
    '("^=\\{2\\}\\([^\n=]+\\)=\\{2\\}[^=]"
-    (1 'simple-wiki-heading-2-face))
+    (1 'simple-wiki-heading-2-face append))
    '("^=\\{3\\}\\([^\n=]+\\)=\\{3\\}[^=]"
-     (1 'simple-wiki-heading-3-face))
+     (1 'simple-wiki-heading-3-face append))
    '("^=\\{4\\}\\([^\n=]+\\)=\\{4\\}[^=]"
-     (1 'simple-wiki-heading-4-face))
+     (1 'simple-wiki-heading-4-face append))
    '("^=\\{5\\}\\([^\n=]+\\)=\\{5\\}[^=]"
-     (1 'simple-wiki-heading-5-face))
+     (1 'simple-wiki-heading-5-face append))
    '("^=\\{6\\}\\([^\n=]+\\)=\\{6\\}[^=]"
-     (1 'simple-wiki-heading-6-face))
+     (1 'simple-wiki-heading-6-face append))
 
-   '("<\\(/?[a-z]+\\)" (1 font-lock-function-name-face))   ; tags
-   '("^[*#]\\([*#]+\\)" . 'font-lock-constant-face)        ; enums
-   '("^\\([*#]\\)[^*#]" 1 font-lock-builtin-face)          ; enums
+   '("<\\(/?[a-z]+\\)" (1 font-lock-function-name-face t)) ; tags
+   '("^[*#]\\([*#]+\\)" (0 font-lock-constant-face t))     ; enums
+   '("^\\([*#]\\)[^*#]" (1 font-lock-builtin-face t))      ; enums
 
-   ;; emphasis FIXME: these are multi lines as well
+   ;; FIXME: emphasis and tags may be multi line but seems to work well this way
+
+   ;; emphasis
    '(simple-wiki-match-emph . 'simple-wiki-emph-face)
    '(simple-wiki-match-strong . 'simple-wiki-strong-face)
 
-   ;; multi lines
+   ;; other tags
+   '(simple-wiki-match-italic . (0 'simple-wiki-italic-face prepend))
+   '(simple-wiki-match-bold . (0 'simple-wiki-bold-face prepend))
+   '(simple-wiki-match-underline . (0 'simple-wiki-underline-face prepend))
+   '(simple-wiki-match-teletype . '(0 'simple-wiki-teletype-face prepend))
+   '(simple-wiki-match-pre . (0 'simple-wiki-code-face t))
+   '(simple-wiki-match-code-tag . (0 'simple-wiki-code-face t))
+
+   ;; code blocks
    '("^[\t ]" (simple-wiki-match-code (simple-wiki-check-in-code-block) nil
-                                      (0 'simple-wiki-code-face)))))
+                                      (0 'simple-wiki-code-face t)))))
 
 (define-derived-mode simple-wiki-mode text-mode "Wiki"
   "Simple mode to edit wiki pages.
@@ -173,6 +205,24 @@
       (store-match-data (list beg end))
       t)))
 
+(defun simple-wiki-match-italic (limit)
+  (simple-wiki-match-taged limit "i"))
+
+(defun simple-wiki-match-bold (limit)
+  (simple-wiki-match-taged limit "b"))
+
+(defun simple-wiki-match-underline (limit)
+  (simple-wiki-match-taged limit "u"))
+
+(defun simple-wiki-match-teletype (limit)
+  (simple-wiki-match-taged limit "tt"))
+
+(defun simple-wiki-match-pre (limit)
+  (simple-wiki-match-taged limit "pre"))
+
+(defun simple-wiki-match-code-tag (limit)
+  (simple-wiki-match-taged limit "code"))
+
 (defun simple-wiki-match-emph-classic (limit)
   (when (re-search-forward
          "[^']\\(''\\)[^']" limit t)
@@ -202,7 +252,8 @@
 
 (defun simple-wiki-check-in-code-block ()
   "Set the variable `simple-wiki-in-code-block'.
-Set `simple-wiki-in-code-block' to non nil if the point is in a code block."
+Set `simple-wiki-in-code-block' to non nil if the point is in a code block.
+If we are in a code block return the point of the end of the block."
   ;; FIXME: we assume that the line before code is empty.
   ;; this is not necessary in all cases.  known issues:
   ;;        (a) code starts directly after a heading.
@@ -215,7 +266,6 @@ Set `simple-wiki-in-code-block' to non nil if the point is in a code block."
         (setq simple-wiki-in-code-block t)
         (forward-paragraph)
         (point)))))
-
 
 (defun simple-wiki-match-code (limit)
   (when simple-wiki-in-code-block
